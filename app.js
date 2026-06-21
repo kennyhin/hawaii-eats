@@ -1,5 +1,16 @@
 const STORAGE_KEY = 'food_memory_album_v1';
 const COUNTRIES = ['Hawaii', 'Japan'];
+// left,top,right,bottom (lon/lat) per Nominatim viewbox format
+const COUNTRY_VIEWBOX = {
+  Hawaii: '-160.3,22.3,-154.7,18.8',
+  Japan: '129,46,146,24',
+};
+const CUISINES = [
+  'Hawaiian / Local', 'Japanese', 'Korean', 'Chinese', 'Vietnamese',
+  'Italian', 'American', 'Burgers', 'Fast Food', 'Pizza', 'Seafood',
+  'Mediterranean', 'Asian Fusion', 'Bakery', 'Dessert / Shave Ice',
+  'Food Court / Variety', 'Other',
+];
 
 let state = {
   activeTab: 'Hawaii',
@@ -51,7 +62,8 @@ function getFilteredSorted() {
     list = list.filter(p =>
       p.name.toLowerCase().includes(q) ||
       (p.location || '').toLowerCase().includes(q) ||
-      (p.notes || '').toLowerCase().includes(q)
+      (p.notes || '').toLowerCase().includes(q) ||
+      (p.cuisine || '').toLowerCase().includes(q)
     );
   }
 
@@ -106,7 +118,8 @@ function renderList() {
             <div class="place-thumb">${placeThumb(p)}</div>
             <div class="place-info">
               <h3>${escapeHtml(p.name)}</h3>
-              <div class="meta">${escapeHtml(p.location || 'Tap to see details')}</div>
+              ${p.cuisine ? `<span class="cuisine-badge">${escapeHtml(p.cuisine)}</span>` : ''}
+              ${p.notes ? `<div class="meta"><span class="meta-label">Notes:</span> ${escapeHtml(truncate(p.notes, 60))}</div>` : ''}
             </div>
             ${p.photos && p.photos.length ? `<div class="photo-badge">📷 ${p.photos.length}</div>` : ''}
           </div>
@@ -126,6 +139,11 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function truncate(str, len) {
+  if (!str || str.length <= len) return str;
+  return str.slice(0, len).trim() + '…';
+}
+
 // ---------- View modal ----------
 function openViewModal(id) {
   const place = places.find(p => p.id === id);
@@ -135,6 +153,7 @@ function openViewModal(id) {
   modal.innerHTML = `
     <button class="modal-close" id="viewCloseBtn">✕</button>
     <h2>${escapeHtml(place.name)}</h2>
+    ${place.cuisine ? `<span class="cuisine-badge">${escapeHtml(place.cuisine)}</span>` : ''}
 
     ${place.location ? `
       <div class="field">
@@ -197,6 +216,12 @@ function closeLightbox() {
 // ---------- Add/Edit form ----------
 let pendingPhotos = [];
 
+function populateCuisineSelect(selected) {
+  const select = document.getElementById('fCuisine');
+  select.innerHTML = CUISINES.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  select.value = selected || 'Other';
+}
+
 function openFormModal(id) {
   const place = id ? places.find(p => p.id === id) : null;
   pendingPhotos = place && place.photos ? place.photos.slice() : [];
@@ -204,10 +229,12 @@ function openFormModal(id) {
   document.getElementById('formTitle').textContent = place ? 'Edit Place' : 'Add a Place';
   document.getElementById('placeId').value = place ? place.id : '';
   document.getElementById('fName').value = place ? place.name : '';
+  populateCuisineSelect(place ? place.cuisine : 'Other');
   document.getElementById('fLocation').value = place ? place.location : '';
   document.getElementById('fWebsite').value = place ? place.website : '';
   document.getElementById('fNotes').value = place ? place.notes : '';
   document.getElementById('fPhotos').value = '';
+  document.getElementById('addressHint').textContent = '';
   document.getElementById('deletePlaceBtn').style.display = place ? 'inline-block' : 'none';
 
   renderPhotoPreview();
@@ -257,6 +284,7 @@ function handleFormSubmit(e) {
 
   const data = {
     name,
+    cuisine: document.getElementById('fCuisine').value,
     location: document.getElementById('fLocation').value.trim(),
     website: document.getElementById('fWebsite').value.trim(),
     notes: document.getElementById('fNotes').value.trim(),
@@ -285,12 +313,57 @@ function handleDelete() {
   renderList();
 }
 
+// ---------- Lookup helpers (free, no API key) ----------
+async function findAddress() {
+  const name = document.getElementById('fName').value.trim();
+  const hint = document.getElementById('addressHint');
+  if (!name) {
+    hint.textContent = 'Type the place name first.';
+    return;
+  }
+  const btn = document.getElementById('findAddressBtn');
+  btn.disabled = true;
+  btn.textContent = 'Searching…';
+  hint.textContent = '';
+  try {
+    const viewbox = COUNTRY_VIEWBOX[state.activeTab];
+    const params = new URLSearchParams({ format: 'json', limit: '1', q: name });
+    if (viewbox) {
+      params.set('viewbox', viewbox);
+      params.set('bounded', '1');
+    }
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`);
+    const results = await res.json();
+    if (results && results.length) {
+      document.getElementById('fLocation').value = results[0].display_name;
+      hint.textContent = 'Found it — feel free to edit if it\'s not quite right.';
+    } else {
+      hint.textContent = 'Couldn\'t find that one automatically — type it in manually.';
+    }
+  } catch (err) {
+    hint.textContent = 'Lookup failed — type the address in manually.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📍 Find Address';
+  }
+}
+
+function findWebsite() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) return;
+  const query = `${name} ${state.activeTab} official website`;
+  window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank', 'noopener');
+}
+
 // ---------- Wire up ----------
 document.getElementById('addPlaceBtn').addEventListener('click', () => openFormModal(null));
 document.getElementById('formCloseBtn').addEventListener('click', closeFormModal);
 document.getElementById('placeForm').addEventListener('submit', handleFormSubmit);
 document.getElementById('deletePlaceBtn').addEventListener('click', handleDelete);
 document.getElementById('fPhotos').addEventListener('change', handlePhotoInput);
+document.getElementById('photoTriggerBtn').addEventListener('click', () => document.getElementById('fPhotos').click());
+document.getElementById('findAddressBtn').addEventListener('click', findAddress);
+document.getElementById('findWebsiteBtn').addEventListener('click', findWebsite);
 
 document.getElementById('searchBox').addEventListener('input', (e) => {
   state.search = e.target.value;

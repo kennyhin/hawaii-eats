@@ -179,14 +179,31 @@ main {
 }
 
 .place-info h3 {
-  margin: 0 0 4px;
+  margin: 0 0 5px;
   font-size: 18px;
   line-height: 1.25;
+}
+
+.cuisine-badge {
+  display: inline-block;
+  background: var(--sand);
+  border: 1px solid var(--border);
+  color: var(--ocean-dark);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  margin-bottom: 5px;
 }
 
 .place-info .meta {
   font-size: 13px;
   color: #7a7363;
+}
+
+.place-info .meta .meta-label {
+  font-weight: 700;
+  color: #9a9484;
 }
 
 .photo-badge {
@@ -309,6 +326,7 @@ form.place-form label {
 
 form.place-form input[type="text"],
 form.place-form input[type="url"],
+form.place-form select,
 form.place-form textarea {
   width: 100%;
   padding: 10px 12px;
@@ -316,6 +334,7 @@ form.place-form textarea {
   border: 2px solid var(--border);
   border-radius: 10px;
   font-family: inherit;
+  background: white;
 }
 
 form.place-form textarea {
@@ -326,7 +345,70 @@ form.place-form textarea {
 .hint {
   font-size: 13px;
   color: #8a8473;
-  margin-top: 2px;
+  margin-top: 4px;
+}
+
+.lookup-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.lookup-row input {
+  flex: 1;
+}
+
+.btn-lookup {
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: var(--sand);
+  border: 2px solid var(--ocean);
+  color: var(--ocean-dark);
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 10px;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.btn-lookup:hover {
+  background: var(--ocean);
+  color: white;
+}
+
+.btn-lookup:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.btn-photo {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--coral), #ff8a5c);
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 12px 22px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(255, 107, 94, 0.35);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-photo:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 12px rgba(255, 107, 94, 0.45);
 }
 
 .photo-preview-row {

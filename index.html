@@ -45,18 +45,29 @@
       <label for="fName">What's the name of the place?</label>
       <input type="text" id="fName" required>
 
+      <label for="fCuisine">What type of food is it?</label>
+      <select id="fCuisine"></select>
+
       <label for="fLocation">Where is it located?</label>
-      <input type="text" id="fLocation" placeholder="e.g. Koko Marina, near our house">
+      <div class="lookup-row">
+        <input type="text" id="fLocation" placeholder="e.g. Koko Marina, near our house">
+        <button type="button" class="btn-lookup" id="findAddressBtn">📍 Find Address</button>
+      </div>
+      <div class="hint" id="addressHint"></div>
 
       <label for="fWebsite">Do they have a website?</label>
-      <input type="url" id="fWebsite" placeholder="https://...">
+      <div class="lookup-row">
+        <input type="url" id="fWebsite" placeholder="https://...">
+        <button type="button" class="btn-lookup" id="findWebsiteBtn">🔍 Find Website</button>
+      </div>
+      <div class="hint">Opens a Google search in a new tab — copy the link back here.</div>
 
       <label for="fNotes">What should we remember about it? (the food, who we went with, anything funny that happened)</label>
       <textarea id="fNotes" placeholder="Tell the story..."></textarea>
 
-      <label for="fPhotos">Got any pictures from when we went?</label>
-      <input type="file" id="fPhotos" accept="image/*" multiple>
-      <div class="hint">You can pick more than one photo.</div>
+      <label>Got any pictures from when we went?</label>
+      <input type="file" id="fPhotos" accept="image/*" multiple class="visually-hidden">
+      <button type="button" class="btn-photo" id="photoTriggerBtn">📸 Add Pictures</button>
       <div class="photo-preview-row" id="photoPreviewRow"></div>
 
       <div class="modal-actions">

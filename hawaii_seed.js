@@ -7,7 +7,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "2 food courts (Lanai and Makai Market food court, many restaurants and shops)(good place to hang out and eat. (free parking)",
-    "photos": []
+    "photos": [],
+    "cuisine": "Food Court / Variety"
   },
   {
     "id": "hi-2",
@@ -16,7 +17,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Japanese Village Walk, not open back yet after pandemic",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-3",
@@ -25,7 +27,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Waikiki, across from little stand (Island Vantage Shave Ice)",
-    "photos": []
+    "photos": [],
+    "cuisine": "Asian Fusion"
   },
   {
     "id": "hi-4",
@@ -34,7 +37,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "near our house and Ala Moana Mall",
-    "photos": []
+    "photos": [],
+    "cuisine": "Vietnamese"
   },
   {
     "id": "hi-5",
@@ -43,7 +47,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "closed",
-    "photos": []
+    "photos": [],
+    "cuisine": "Vietnamese"
   },
   {
     "id": "hi-6",
@@ -52,7 +57,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Pho",
-    "photos": []
+    "photos": [],
+    "cuisine": "Vietnamese"
   },
   {
     "id": "hi-7",
@@ -61,7 +67,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "in the Koko Marina by our house) (good breakfast place and good local moco with short ribs instead of hanburger patties",
-    "photos": []
+    "photos": [],
+    "cuisine": "Hawaiian / Local"
   },
   {
     "id": "hi-8",
@@ -70,7 +77,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Breakfast and Brunch) (NEW",
-    "photos": []
+    "photos": [],
+    "cuisine": "Hawaiian / Local"
   },
   {
     "id": "hi-9",
@@ -79,7 +87,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "by Leonards, parking in a very small alley",
-    "photos": []
+    "photos": [],
+    "cuisine": "American"
   },
   {
     "id": "hi-10",
@@ -88,7 +97,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "across from Kiddie Pool by the zoo at Waikiki.",
-    "photos": []
+    "photos": [],
+    "cuisine": "American"
   },
   {
     "id": "hi-11",
@@ -97,7 +107,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Seafood"
   },
   {
     "id": "hi-12",
@@ -106,7 +117,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "In Ka Mall",
-    "photos": []
+    "photos": [],
+    "cuisine": "Pizza"
   },
   {
     "id": "hi-13",
@@ -115,7 +127,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Pizza",
-    "photos": []
+    "photos": [],
+    "cuisine": "Pizza"
   },
   {
     "id": "hi-14",
@@ -124,7 +137,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Italian"
   },
   {
     "id": "hi-15",
@@ -133,7 +147,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Koko Marina",
-    "photos": []
+    "photos": [],
+    "cuisine": "American"
   },
   {
     "id": "hi-16",
@@ -142,7 +157,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Expensive, has offer charcoal hot bread",
-    "photos": []
+    "photos": [],
+    "cuisine": "American"
   },
   {
     "id": "hi-17",
@@ -151,7 +167,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Italian",
-    "photos": []
+    "photos": [],
+    "cuisine": "Italian"
   },
   {
     "id": "hi-18",
@@ -160,7 +177,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "By our house.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Vietnamese"
   },
   {
     "id": "hi-19",
@@ -169,7 +187,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "NEW",
-    "photos": []
+    "photos": [],
+    "cuisine": "Vietnamese"
   },
   {
     "id": "hi-20",
@@ -178,7 +197,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Burgers"
   },
   {
     "id": "hi-21",
@@ -187,7 +207,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Near our house.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Fast Food"
   },
   {
     "id": "hi-22",
@@ -196,7 +217,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Near our house.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Fast Food"
   },
   {
     "id": "hi-23",
@@ -205,7 +227,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Out in Kapolei, 45 minutes drive from our house",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-24",
@@ -214,7 +237,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "one in Pear-ridge and Ala Moana mall) (not bad ramen) (good appetizers",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-25",
@@ -223,7 +247,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "best oxtail ramen soup) (good Gyoza too",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-26",
@@ -232,7 +257,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-27",
@@ -241,7 +267,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "2 locations, always long line",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-28",
@@ -250,7 +277,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "family style, all food comes in big portions",
-    "photos": []
+    "photos": [],
+    "cuisine": "Hawaiian / Local"
   },
   {
     "id": "hi-29",
@@ -259,7 +287,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "only try one",
-    "photos": []
+    "photos": [],
+    "cuisine": "Hawaiian / Local"
   },
   {
     "id": "hi-30",
@@ -268,7 +297,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Breakfast /Bar",
-    "photos": []
+    "photos": [],
+    "cuisine": "American"
   },
   {
     "id": "hi-31",
@@ -277,7 +307,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Chinese"
   },
   {
     "id": "hi-32",
@@ -286,7 +317,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "all you can eat",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-33",
@@ -295,7 +327,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Japanese",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-34",
@@ -304,7 +337,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Royal Hawaiian 3 fl, escalator up by the Island vintage shave ice",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-35",
@@ -313,7 +347,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-36",
@@ -322,7 +357,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Deep Fried pork) (long wait",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-37",
@@ -331,7 +367,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Expensive) (next to Happy Day Chinese Restaurant",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-38",
@@ -340,7 +377,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Wagyu Japanese style Yakiniku. Expensive, $120 per person set meal, very good quality meat but did not feel full after dinner.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-39",
@@ -349,7 +387,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "across from Marukame Udon",
-    "photos": []
+    "photos": [],
+    "cuisine": "Korean"
   },
   {
     "id": "hi-40",
@@ -358,7 +397,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Near Ala Moana and near our house by the King's church. Good Kalbi, lady gave son a free coke. Expensive but good meat quality.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Korean"
   },
   {
     "id": "hi-41",
@@ -367,7 +407,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Korean by Walmart",
-    "photos": []
+    "photos": [],
+    "cuisine": "Korean"
   },
   {
     "id": "hi-42",
@@ -376,7 +417,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "at Ala Moana in Lanai food court",
-    "photos": []
+    "photos": [],
+    "cuisine": "Chinese"
   },
   {
     "id": "hi-43",
@@ -385,7 +427,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "in the Ala Moana Mall",
-    "photos": []
+    "photos": [],
+    "cuisine": "Food Court / Variety"
   },
   {
     "id": "hi-44",
@@ -394,7 +437,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Togo only) affordable, ribs and side dishes good",
-    "photos": []
+    "photos": [],
+    "cuisine": "Korean"
   },
   {
     "id": "hi-45",
@@ -403,7 +447,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "all you can eat",
-    "photos": []
+    "photos": [],
+    "cuisine": "Korean"
   },
   {
     "id": "hi-46",
@@ -412,7 +457,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Ala Moana Mall) (all you can eat) (went in 7/2024, not good any more",
-    "photos": []
+    "photos": [],
+    "cuisine": "Korean"
   },
   {
     "id": "hi-47",
@@ -421,7 +467,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "In the Ward Center, all you can eat, used to be Little Sheep Hot Pot. Individual pot, order from menu, good meat quality. Another newer location in Waikiki across from Ilikai Hotel near Hilton Hawaiian Village.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Chinese"
   },
   {
     "id": "hi-48",
@@ -430,7 +477,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Hot Pot ) (park in the back, pay for by putting money in the slot box.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-49",
@@ -439,7 +487,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-50",
@@ -448,7 +497,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "In the H-Mart Korean Market food court. Kids like Dada chicken, Kenny likes Giovanni's shrimp.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Hawaiian / Local"
   },
   {
     "id": "hi-51",
@@ -457,7 +507,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Seafood"
   },
   {
     "id": "hi-52",
@@ -466,7 +517,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "In Ala Moana Mall, upstairs. Good dim sum.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Chinese"
   },
   {
     "id": "hi-53",
@@ -475,7 +527,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Chinese",
-    "photos": []
+    "photos": [],
+    "cuisine": "Chinese"
   },
   {
     "id": "hi-54",
@@ -484,7 +537,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Hawaiian / Local"
   },
   {
     "id": "hi-55",
@@ -493,7 +547,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "By our house, next to Maili Thai Restaurant.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Hawaiian / Local"
   },
   {
     "id": "hi-56",
@@ -502,7 +557,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "for goh goh and kiene",
-    "photos": []
+    "photos": [],
+    "cuisine": "Seafood"
   },
   {
     "id": "hi-57",
@@ -511,7 +567,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Mediterranean, next to Han No Daidokora. Went to lunch and sun on self trip 12/2023.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Mediterranean"
   },
   {
     "id": "hi-58",
@@ -520,7 +577,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Spam Musubi (in the Ala Moana Mall)",
-    "photos": []
+    "photos": [],
+    "cuisine": "Hawaiian / Local"
   },
   {
     "id": "hi-59",
@@ -529,7 +587,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-60",
@@ -538,7 +597,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Tonkatsu (Chicken Katsu)",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-61",
@@ -547,7 +607,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Lunch/Breakfast",
-    "photos": []
+    "photos": [],
+    "cuisine": "American"
   },
   {
     "id": "hi-62",
@@ -556,7 +617,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Burgers and Pizza",
-    "photos": []
+    "photos": [],
+    "cuisine": "American"
   },
   {
     "id": "hi-64",
@@ -565,7 +627,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Hot Pot",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-65",
@@ -574,7 +637,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Food Trucks",
-    "photos": []
+    "photos": [],
+    "cuisine": "Food Court / Variety"
   },
   {
     "id": "hi-66",
@@ -583,7 +647,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Saturday Night",
-    "photos": []
+    "photos": [],
+    "cuisine": "Food Court / Variety"
   },
   {
     "id": "hi-67",
@@ -592,7 +657,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Friday Night",
-    "photos": []
+    "photos": [],
+    "cuisine": "Food Court / Variety"
   },
   {
     "id": "hi-68",
@@ -601,7 +667,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Thursday night, the wave spot.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Food Court / Variety"
   },
   {
     "id": "hi-69",
@@ -610,7 +677,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Dessert / Shave Ice"
   },
   {
     "id": "hi-70",
@@ -619,7 +687,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Shave Ice (owner moved from Maui to open) Kenny, Kien, Kids first time and love it.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Dessert / Shave Ice"
   },
   {
     "id": "hi-71",
@@ -628,7 +697,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Avery favorite place",
-    "photos": []
+    "photos": [],
+    "cuisine": "Dessert / Shave Ice"
   },
   {
     "id": "hi-72",
@@ -637,7 +707,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Boba",
-    "photos": []
+    "photos": [],
+    "cuisine": "Dessert / Shave Ice"
   },
   {
     "id": "hi-73",
@@ -646,7 +717,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Dessert / Shave Ice"
   },
   {
     "id": "hi-74",
@@ -655,7 +727,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Bakery"
   },
   {
     "id": "hi-75",
@@ -664,7 +737,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Ala Moana Mall ) Lanai food court (another part of the food court in Ala Moana Mall",
-    "photos": []
+    "photos": [],
+    "cuisine": "Bakery"
   },
   {
     "id": "hi-76",
@@ -673,7 +747,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "In Waikiki, a small hut on the walk path.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Dessert / Shave Ice"
   },
   {
     "id": "hi-77",
@@ -682,7 +757,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "by main Leonard's",
-    "photos": []
+    "photos": [],
+    "cuisine": "Dessert / Shave Ice"
   },
   {
     "id": "hi-78",
@@ -691,7 +767,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Dessert / Shave Ice"
   },
   {
     "id": "hi-79",
@@ -700,7 +777,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "NEW",
-    "photos": []
+    "photos": [],
+    "cuisine": "Dessert / Shave Ice"
   },
   {
     "id": "hi-81",
@@ -709,7 +787,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Name has changed. Went on a trip with Lilly, Kayla and Roxus too. In 7/2023 we ordered a sushi sashimi combo, it came out on a boat with smoke coming out. On 7/2024 with Kenny we ordered a sushi sashimi combo, it came out with a jungle scene with stairs and smoke.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-82",
@@ -718,7 +797,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "restaurant out in Wai Kai in Eva Beach, there is a big night market across from restaurant.",
-    "photos": []
+    "photos": [],
+    "cuisine": "American"
   },
   {
     "id": "hi-83",
@@ -727,7 +807,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Food truck behind Sura Korean restaurant, next to 24 Hour Fitness, eat outside. We tried scallop topped with peanuts, fried shallots, Vietnamese herbs and butter. Walked over after dinner from Kanoya Sushi.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Vietnamese"
   },
   {
     "id": "hi-84",
@@ -736,7 +817,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "In the Koko Marina, same center as Moana Cafe",
-    "photos": []
+    "photos": [],
+    "cuisine": "Hawaiian / Local"
   },
   {
     "id": "hi-85",
@@ -745,7 +827,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "At Aiea bowling alley. Food not bad, fried chicken is good.",
-    "photos": []
+    "photos": [],
+    "cuisine": "American"
   },
   {
     "id": "hi-86",
@@ -754,7 +837,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Chinese restaurant, dim sum and dinner. Nai Wong bao for P. (Koko Marina)",
-    "photos": []
+    "photos": [],
+    "cuisine": "Chinese"
   },
   {
     "id": "hi-87",
@@ -763,7 +847,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Chinese Express, not bad roasted duck. Same center as Gina BBQ Korean.",
-    "photos": []
+    "photos": [],
+    "cuisine": "Chinese"
   },
   {
     "id": "hi-88",
@@ -772,7 +857,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Korean) (son and Kayla like) (we not so much",
-    "photos": []
+    "photos": [],
+    "cuisine": "Korean"
   },
   {
     "id": "hi-89",
@@ -781,7 +867,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "",
-    "photos": []
+    "photos": [],
+    "cuisine": "Seafood"
   },
   {
     "id": "hi-91",
@@ -790,7 +877,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "outside beach Waikiki) eat with son first time in HI",
-    "photos": []
+    "photos": [],
+    "cuisine": "American"
   },
   {
     "id": "hi-92",
@@ -799,7 +887,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "next to Ala Moana",
-    "photos": []
+    "photos": [],
+    "cuisine": "Japanese"
   },
   {
     "id": "hi-93",
@@ -808,7 +897,8 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Koko Marina Shopping Center, by Walgreens",
-    "photos": []
+    "photos": [],
+    "cuisine": "Chinese"
   },
   {
     "id": "hi-94",
@@ -817,6 +907,7 @@ const SEED_PLACES = [
     "location": "",
     "website": "",
     "notes": "Chinatown",
-    "photos": []
+    "photos": [],
+    "cuisine": "Burgers"
   }
 ];
