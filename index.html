@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Our Food Memory Album</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="top">
+  <h1>🌴 Our Food Memory Album 🍜</h1>
+  <p>Every place we've eaten, and the memories that came with it</p>
+  <div class="tabs" id="tabs"></div>
+</header>
+
+<main>
+  <div class="controls">
+    <input type="search" id="searchBox" placeholder="Search places...">
+    <select id="sortSelect">
+      <option value="az">Sort A → Z</option>
+      <option value="za">Sort Z → A</option>
+    </select>
+    <button class="btn btn-primary" id="addPlaceBtn">+ Add a Place</button>
+  </div>
+  <div class="count-line" id="countLine"></div>
+  <div id="listContainer"></div>
+</main>
+
+<footer>Made with love for the family 💛</footer>
+
+<!-- View Place Modal -->
+<div class="overlay hidden" id="viewOverlay">
+  <div class="modal" id="viewModal"></div>
+</div>
+
+<!-- Add/Edit Place Modal -->
+<div class="overlay hidden" id="formOverlay">
+  <div class="modal">
+    <button class="modal-close" id="formCloseBtn">✕</button>
+    <h2 id="formTitle">Add a Place</h2>
+    <form class="place-form" id="placeForm">
+      <input type="hidden" id="placeId">
+
+      <label for="fName">What's the name of the place?</label>
+      <input type="text" id="fName" required>
+
+      <label for="fLocation">Where is it located?</label>
+      <input type="text" id="fLocation" placeholder="e.g. Koko Marina, near our house">
+
+      <label for="fWebsite">Do they have a website?</label>
+      <input type="url" id="fWebsite" placeholder="https://...">
+
+      <label for="fNotes">What should we remember about it? (the food, who we went with, anything funny that happened)</label>
+      <textarea id="fNotes" placeholder="Tell the story..."></textarea>
+
+      <label for="fPhotos">Got any pictures from when we went?</label>
+      <input type="file" id="fPhotos" accept="image/*" multiple>
+      <div class="hint">You can pick more than one photo.</div>
+      <div class="photo-preview-row" id="photoPreviewRow"></div>
+
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">Save Place</button>
+        <button type="button" class="btn btn-secondary" id="deletePlaceBtn" style="display:none;">Delete</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="overlay hidden" id="lightboxOverlay">
+  <button class="modal-close" id="lightboxCloseBtn" style="position:fixed; top:20px; right:20px;">✕</button>
+  <img class="lightbox-img" id="lightboxImg" src="" alt="">
+</div>
+
+<script src="hawaii_seed.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

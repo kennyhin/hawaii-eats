@@ -1,0 +1,376 @@
+:root {
+  --sand: #fdf6ec;
+  --ocean: #1c7c8c;
+  --ocean-dark: #145c68;
+  --coral: #ff6b5e;
+  --ink: #2c2a26;
+  --card-bg: #ffffff;
+  --border: #e7ddc9;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--sand);
+  color: var(--ink);
+}
+
+header.top {
+  background: linear-gradient(135deg, var(--ocean), var(--ocean-dark));
+  color: white;
+  padding: 28px 20px 18px;
+  text-align: center;
+}
+
+header.top h1 {
+  margin: 0 0 4px;
+  font-size: clamp(28px, 5vw, 40px);
+}
+
+header.top p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 16px;
+}
+
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.5);
+  color: white;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tab-btn.active {
+  background: white;
+  color: var(--ocean-dark);
+  border-color: white;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.controls input[type="search"] {
+  flex: 1;
+  min-width: 180px;
+  padding: 12px 16px;
+  font-size: 17px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: white;
+}
+
+.controls select {
+  padding: 12px 14px;
+  font-size: 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: white;
+}
+
+.btn {
+  padding: 12px 18px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--coral);
+  color: white;
+}
+
+.btn-secondary {
+  background: white;
+  border: 2px solid var(--ocean);
+  color: var(--ocean-dark);
+}
+
+.count-line {
+  font-size: 15px;
+  color: #6b6555;
+  margin: -6px 0 16px;
+}
+
+.letter-section {
+  margin-bottom: 28px;
+}
+
+.letter-heading {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ocean-dark);
+  border-bottom: 3px solid var(--ocean);
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.place-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: transform 0.1s, box-shadow 0.1s;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.place-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.place-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: var(--sand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.place-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.place-info h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.place-info .meta {
+  font-size: 13px;
+  color: #7a7363;
+}
+
+.photo-badge {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--ocean-dark);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #8a8473;
+  font-size: 18px;
+}
+
+/* Modal */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 18, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.overlay.hidden { display: none; }
+
+.modal {
+  background: white;
+  border-radius: var(--radius);
+  max-width: 640px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: var(--sand);
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.modal h2 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  padding-right: 30px;
+}
+
+.modal .field {
+  margin: 14px 0;
+}
+
+.modal .field label {
+  display: block;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ocean-dark);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.modal .field p, .modal .field a {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.modal .field a {
+  color: var(--coral);
+  word-break: break-word;
+}
+
+.photo-gallery {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-top: 8px;
+}
+
+.photo-gallery img {
+  height: 160px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+/* form */
+form.place-form label {
+  display: block;
+  font-weight: 700;
+  font-size: 14px;
+  margin: 14px 0 5px;
+  color: var(--ocean-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+form.place-form input[type="text"],
+form.place-form input[type="url"],
+form.place-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 16px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+}
+
+form.place-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.hint {
+  font-size: 13px;
+  color: #8a8473;
+  margin-top: 2px;
+}
+
+.photo-preview-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.photo-preview-row .thumb-wrap {
+  position: relative;
+}
+
+.photo-preview-row img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.photo-preview-row .remove-x {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--coral);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 10px;
+}
+
+footer {
+  text-align: center;
+  padding: 20px;
+  font-size: 13px;
+  color: #9a9484;
+}
