@@ -299,7 +299,7 @@ const CATEGORY_DEFAULT_EMOJI = { eats: '🍽️', beaches: '🏖️', hikes: '�
 
 function placeThumb(place) {
   if (place.photos && place.photos.length > 0) {
-    return `<img src="${place.photos[0]}" alt="">`;
+    return `<img src="${photoUrl(place.photos[0])}" alt="">`;
   }
   return CATEGORY_DEFAULT_EMOJI[place.category || 'eats'];
 }
@@ -396,6 +396,17 @@ function averageRating(memories) {
   return (sum / memories.length).toFixed(1);
 }
 
+// Photos used to be stored as plain URL strings; new uploads are
+// { url, author, uploadedAt } objects so we can credit leaderboard points.
+// These helpers read either shape.
+function photoUrl(photo) {
+  return typeof photo === 'string' ? photo : photo.url;
+}
+
+function photoAuthor(photo) {
+  return typeof photo === 'string' ? null : (photo.author || null);
+}
+
 // ---------- Cuisine/type filter ----------
 function populateCuisineFilterSelect() {
   const select = document.getElementById('cuisineFilterSelect');
@@ -413,7 +424,7 @@ function computeRawPointsStats() {
   const stats = {};
   function ensure(name, color) {
     const key = normalizeName(name);
-    if (!stats[key]) stats[key] = { name, points: 0, placesAdded: 0, memoriesCount: 0, ratingSum: 0, color: color || BUBBLE_COLORS[0] };
+    if (!stats[key]) stats[key] = { name, points: 0, placesAdded: 0, memoriesCount: 0, photosAdded: 0, ratingSum: 0, color: color || BUBBLE_COLORS[0] };
     stats[key].name = name; // keep most-recently-seen casing as the display name
     return stats[key];
   }
@@ -433,6 +444,13 @@ function computeRawPointsStats() {
       s.points += 1;
       s.ratingSum += (m.rating || 0);
       s.color = m.color || s.color;
+    });
+    (place.photos || []).forEach(photo => {
+      const key = (photoAuthor(photo) || '').trim();
+      if (!key) return;
+      const s = ensure(key);
+      s.photosAdded += 1;
+      s.points += 1;
     });
   });
 
@@ -481,7 +499,7 @@ function openLeaderboard() {
   modal.innerHTML = `
     <button class="modal-close" id="leaderboardCloseBtn">✕</button>
     <h2>🏆 Top Contributors</h2>
-    <p class="leaderboard-legend">+2 pts for adding a place · +1 pt for each memory you post · Shop purchases subtract from your balance</p>
+    <p class="leaderboard-legend">+2 pts for adding a place · +1 pt for each memory you post · +1 pt for each photo you add · Shop purchases subtract from your balance</p>
     ${data.length ? `
       <div class="leaderboard-list">
         ${data.map((c, i) => {
@@ -496,7 +514,7 @@ function openLeaderboard() {
             <span class="leaderboard-rank">${medals[i] || (i + 1) + '.'}</span>
             <span class="leaderboard-avatar" style="background:${escapeHtml(avatarBg)}">${icon || escapeHtml((c.name[0] || '?').toUpperCase())}</span>
             <span class="leaderboard-name">${authorBadgeHtml(c.name)}</span>
-            <span class="leaderboard-stats">${c.points} pts<br>${c.placesAdded} place${c.placesAdded === 1 ? '' : 's'} · ${c.memoriesCount} memor${c.memoriesCount === 1 ? 'y' : 'ies'}</span>
+            <span class="leaderboard-stats">${c.points} pts<br>${c.placesAdded} place${c.placesAdded === 1 ? '' : 's'} · ${c.memoriesCount} memor${c.memoriesCount === 1 ? 'y' : 'ies'} · ${c.photosAdded} photo${c.photosAdded === 1 ? '' : 's'}</span>
           </div>
         `;
         }).join('')}
@@ -512,21 +530,31 @@ function closeLeaderboard() {
 
 // ---------- Shop ----------
 function shopItemPreview(category, item) {
-  if (category === 'icon') return `<span class="shop-preview shop-preview-icon">${item.emoji}</span>`;
-  if (category === 'color') return `<span class="shop-preview shop-preview-color" style="background:${item.hex}"></span>`;
-  return `<span class="shop-preview shop-preview-skin" style="background:${skinBackgroundCss(item)}"></span>`;
+  if (category === 'icon') return `<span class="shop-preview shop-preview-icon" data-category="${category}" data-id="${item.id}">${item.emoji}</span>`;
+  if (category === 'color') return `<span class="shop-preview shop-preview-color" data-category="${category}" data-id="${item.id}" style="background:${item.hex}"></span>`;
+  return `<span class="shop-preview shop-preview-skin" data-category="${category}" data-id="${item.id}" style="background:${skinBackgroundCss(item)}"></span>`;
 }
 
 function shopItemLabel(category, item) {
   return item.label;
 }
 
+// Lets the Shop preview a not-yet-owned item without equipping it. Keys are
+// 'icon'/'color'/'skin'; a value of '' means "previewing None", undefined
+// means "show whatever's actually equipped". Reset each time the Shop opens.
+let shopPreviewOverride = {};
+
 function renderShopPreviewBubble(profile) {
-  const icon = profile?.equippedIcon ? SHOP_ICONS.find(i => i.id === profile.equippedIcon)?.emoji : '';
-  const colorItem = profile?.equippedColor ? SHOP_COLORS.find(c => c.id === profile.equippedColor) : null;
-  const skin = profile?.equippedSkin ? SHOP_SKINS.find(s => s.id === profile.equippedSkin) : null;
+  const iconId = shopPreviewOverride.icon !== undefined ? shopPreviewOverride.icon : profile?.equippedIcon;
+  const colorId = shopPreviewOverride.color !== undefined ? shopPreviewOverride.color : profile?.equippedColor;
+  const skinId = shopPreviewOverride.skin !== undefined ? shopPreviewOverride.skin : profile?.equippedSkin;
+
+  const icon = iconId ? SHOP_ICONS.find(i => i.id === iconId)?.emoji : '';
+  const colorItem = colorId ? SHOP_COLORS.find(c => c.id === colorId) : null;
+  const skin = skinId ? SHOP_SKINS.find(s => s.id === skinId) : null;
   const bg = skin ? skinBackgroundCss(skin) : BUBBLE_COLORS[0];
   const nameStyle = colorItem ? ` style="color:${colorItem.hex}"` : '';
+  const isPreviewing = Object.keys(shopPreviewOverride).length > 0;
   return `
     <div class="memory-bubble shop-live-preview" style="background:${bg}">
       <div class="memory-card-top">
@@ -535,10 +563,17 @@ function renderShopPreviewBubble(profile) {
       </div>
       <p class="memory-text">This is what your memory will look like!</p>
     </div>
+    ${isPreviewing ? `<p class="hint">👀 Previewing — tap "Equip" or "Buy" to make it permanent.</p>` : `<p class="hint">Tap any swatch below to preview it here.</p>`}
   `;
 }
 
+function previewShopItem(profile, category, itemId) {
+  shopPreviewOverride[category] = itemId || '';
+  document.getElementById('shopLivePreviewBox').innerHTML = renderShopPreviewBubble(profile);
+}
+
 function openShop() {
+  shopPreviewOverride = {};
   const name = getSavedAuthorName();
   const profile = name ? getProfile(name) : null;
   const available = name ? (getRawPoints(name) - (profile?.spentPoints || 0)) : 0;
@@ -564,13 +599,13 @@ function openShop() {
       : `<p class="hint">Type your name above to see your balance and start shopping.</p>`}
 
     <h3 class="shop-section-title">👀 Live Preview</h3>
-    ${renderShopPreviewBubble(profile)}
+    <div id="shopLivePreviewBox">${renderShopPreviewBubble(profile)}</div>
 
     ${sections.map(section => `
       <h3 class="shop-section-title">${section.title}</h3>
       <div class="shop-grid">
         <div class="shop-item">
-          <span class="shop-preview shop-preview-none">🚫</span>
+          <span class="shop-preview shop-preview-none" data-category="${section.category}" data-id="">🚫</span>
           <span class="shop-item-label">None</span>
           ${name ? `<button type="button" class="btn-shop-item ${!profile?.[EQUIP_FIELD[section.category]] ? 'shop-equipped' : 'shop-equip-btn'}" data-category="${section.category}" data-id="" ${!profile?.[EQUIP_FIELD[section.category]] ? 'disabled' : ''}>${!profile?.[EQUIP_FIELD[section.category]] ? '✓ Default' : 'Use Default'}</button>` : `<button type="button" class="btn-shop-item" disabled>Default</button>`}
         </div>
@@ -604,6 +639,9 @@ function openShop() {
   document.getElementById('shopNameInput').addEventListener('change', (e) => {
     saveAuthorName(e.target.value.trim());
     openShop();
+  });
+  modal.querySelectorAll('.shop-preview[data-category]').forEach(swatch => {
+    swatch.addEventListener('click', () => previewShopItem(profile, swatch.dataset.category, swatch.dataset.id));
   });
   modal.querySelectorAll('.shop-buy-btn').forEach(btn => {
     btn.addEventListener('click', () => buyItem(name, btn.dataset.category, btn.dataset.id, Number(btn.dataset.cost)));
@@ -729,7 +767,7 @@ function activityText(item) {
     case 'place_added':
       return `${who} added <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(2)}`;
     case 'photo_added':
-      return `${who} added a photo to <strong>${escapeHtml(item.placeName)}</strong>`;
+      return `${who} added a photo to <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(1)}`;
     case 'memory_added':
       return `${who} left a ${item.rating}★ memory on <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(1)}`;
     case 'like':
@@ -789,7 +827,7 @@ function renderRandomizerPick(pool) {
     <div class="randomizer-result">
       <div class="randomizer-dice">🎲</div>
       <p class="randomizer-tagline">Tonight's pick is...</p>
-      ${place.photos && place.photos.length ? `<img class="randomizer-photo" src="${place.photos[0]}" alt="">` : ''}
+      ${place.photos && place.photos.length ? `<img class="randomizer-photo" src="${photoUrl(place.photos[0])}" alt="">` : ''}
       <h2>${escapeHtml(place.name)}</h2>
       ${place.cuisine ? `<span class="cuisine-badge">${escapeHtml(place.cuisine)}</span>` : ''}
       ${place.distance ? `<span class="cuisine-badge">🥾 ${escapeHtml(place.distance)}</span>` : ''}
@@ -818,9 +856,9 @@ function renderPhotoGalleryItems(place) {
   if (!place.photos || !place.photos.length) {
     return `<p class="no-memories">No photos yet — add the first one!</p>`;
   }
-  return place.photos.map((src, i) => `
+  return place.photos.map((photo, i) => `
     <div class="photo-wrap">
-      <img src="${src}" alt="" data-idx="${i}">
+      <img src="${photoUrl(photo)}" alt="" data-idx="${i}">
       <button type="button" class="photo-delete-btn" data-idx="${i}" title="Delete photo">✕</button>
     </div>
   `).join('');
@@ -907,9 +945,9 @@ async function handlePhotoUpload(e, placeId) {
       btn.textContent = '⏳ Uploading…';
       const compressed = await compressImage(file);
       const url = await uploadToImgbb(compressed);
-      place.photos = [...(place.photos || []), url];
       place.lastPhotoAddedAt = Date.now();
       place.lastPhotoAddedBy = getSavedAuthorName() || 'Someone';
+      place.photos = [...(place.photos || []), { url, author: place.lastPhotoAddedBy, uploadedAt: place.lastPhotoAddedAt }];
       await setDoc(doc(db, PLACES_COLLECTION, placeId), {
         photos: place.photos,
         lastPhotoAddedAt: place.lastPhotoAddedAt,
@@ -983,7 +1021,7 @@ function openViewModal(id) {
     <div class="field" id="photoFieldWrapper">
       <div class="photo-field-header">
         <label>Photos</label>
-        <button type="button" class="btn-add-photo" id="addPhotoBtn">📸 Add Photo</button>
+        <button type="button" class="btn-add-photo" id="addPhotoBtn">📸 Add Photo (+1 pt)</button>
         <input type="file" id="photoInput" accept="image/*" multiple class="visually-hidden">
       </div>
       <div class="photo-gallery" id="photoGallery">${renderPhotoGalleryItems(place)}</div>

@@ -1009,6 +1009,12 @@ form.place-form textarea {
   height: 44px;
   border-radius: 50%;
   border: 2px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.shop-preview:hover {
+  transform: scale(1.08);
 }
 
 .shop-preview-icon {
