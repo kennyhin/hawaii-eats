@@ -49,6 +49,18 @@ const SHOP_SKINS = [
   { id: 'skin_sunset', label: 'Sunset', cost: SKIN_COST, overlay: 0.35, css: 'linear-gradient(135deg, #fca47c, #f9d779, #23ced9)' },
   { id: 'skin_polka', label: 'Polka Dots', cost: SKIN_COST, overlay: 0.25, css: 'radial-gradient(circle, #ffffff 28%, transparent 30%) 0 0/18px 18px, #a1cca6' },
   { id: 'skin_galaxy', label: 'Galaxy', cost: SKIN_COST, overlay: 0.55, css: 'radial-gradient(circle at 25% 30%, rgba(255,255,255,0.55) 0%, transparent 6%), radial-gradient(circle at 65% 55%, rgba(255,255,255,0.4) 0%, transparent 5%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.45) 0%, transparent 4%), linear-gradient(135deg, #2c2a26, #097c87)' },
+  { id: 'skin_f1_ferrari', label: 'F1 Ferrari', cost: SKIN_COST, overlay: 0.45, image: 'skins/f1_skin1.png' },
+  { id: 'skin_f1_petronas', label: 'F1 Petronas', cost: SKIN_COST, overlay: 0.3, image: 'skins/f1_skin2.png' },
+  { id: 'skin_f1_neon', label: 'F1 Neon', cost: SKIN_COST, overlay: 0.4, image: 'skins/f1_skin3.png' },
+  { id: 'skin_f1_mercedes', label: 'F1 Mercedes', cost: SKIN_COST, overlay: 0.25, image: 'skins/f1_skin4.png' },
+  { id: 'skin_ocean_wave', label: 'Ocean Wave', cost: SKIN_COST, overlay: 0.4, image: 'skins/ocean_skin1.png' },
+  { id: 'skin_vikings', label: 'Vikings', cost: SKIN_COST, overlay: 0.45, image: 'skins/viking_skin.png' },
+  { id: 'skin_pokemon', label: 'Pokémon', cost: SKIN_COST, overlay: 0.2, image: 'skins/pokemon_skin.png' },
+  { id: 'skin_celtics', label: 'Celtics', cost: SKIN_COST, overlay: 0.35, image: 'skins/celtics_skin.png' },
+  { id: 'skin_stranger_things', label: 'Stranger Things', cost: SKIN_COST, overlay: 0.45, image: 'skins/Strangerthings_skin.png' },
+  { id: 'skin_eleven', label: 'Eleven', cost: SKIN_COST, overlay: 0.2, image: 'skins/11_skin.png' },
+  { id: 'skin_rose', label: 'Rose', cost: SKIN_COST, overlay: 0.2, image: 'skins/rose_skin.png' },
+  { id: 'skin_purple_daisies', label: 'Purple Daisies', cost: SKIN_COST, overlay: 0.35, image: 'skins/flower_skin.png' },
 ];
 
 function skinBackgroundCss(skin) {
