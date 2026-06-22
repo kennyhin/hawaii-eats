@@ -27,6 +27,16 @@ let state = {
 let places = [];
 let firstSnapshotReceived = false;
 
+const AUTHOR_NAME_KEY = 'food_memory_album_author_name';
+
+function getSavedAuthorName() {
+  return localStorage.getItem(AUTHOR_NAME_KEY) || '';
+}
+
+function saveAuthorName(name) {
+  localStorage.setItem(AUTHOR_NAME_KEY, name);
+}
+
 function uid() {
   return 'p-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 }
@@ -169,10 +179,27 @@ function truncate(str, len) {
   return str.slice(0, len).trim() + '…';
 }
 
+function renderStarsDisplay(rating) {
+  let html = '';
+  for (let i = 1; i <= 5; i++) {
+    html += `<span class="star ${i <= rating ? 'star-filled' : ''}">★</span>`;
+  }
+  return `<span class="star-row">${html}</span>`;
+}
+
+function averageRating(memories) {
+  if (!memories || !memories.length) return null;
+  const sum = memories.reduce((acc, m) => acc + (m.rating || 0), 0);
+  return (sum / memories.length).toFixed(1);
+}
+
 // ---------- View modal ----------
 function openViewModal(id) {
   const place = places.find(p => p.id === id);
   if (!place) return;
+
+  const memories = place.memories || [];
+  const avg = averageRating(memories);
 
   const modal = document.getElementById('viewModal');
   modal.innerHTML = `
@@ -192,18 +219,50 @@ function openViewModal(id) {
         <a href="${escapeHtml(place.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(place.website)}</a>
       </div>` : ''}
 
-    ${place.notes ? `
-      <div class="field">
-        <label>Our Memory</label>
-        <p>${escapeHtml(place.notes)}</p>
-      </div>` : ''}
-
     ${place.photos && place.photos.length ? `
       <div class="field">
         <label>Photos</label>
         <div class="photo-gallery">
           ${place.photos.map(src => `<img src="${src}" alt="">`).join('')}
         </div>
+      </div>` : ''}
+
+    <div class="memories-section">
+      <div class="memories-heading">
+        <span>Memories</span>
+        ${avg ? `<span class="memories-avg">${renderStarsDisplay(Math.round(avg))} ${avg} (${memories.length})</span>` : ''}
+      </div>
+
+      ${memories.length ? memories.map(m => `
+        <div class="memory-card">
+          <div class="memory-card-top">
+            <span class="memory-author">${escapeHtml(m.author)}</span>
+            ${renderStarsDisplay(m.rating)}
+          </div>
+          ${m.text ? `<p class="memory-text">${escapeHtml(m.text)}</p>` : ''}
+        </div>
+      `).join('') : `<p class="no-memories">No memories yet — be the first!</p>`}
+
+      <div class="memory-form">
+        <label>Who are you?</label>
+        <input type="text" id="memoryAuthorInput" placeholder="Your name" value="${escapeHtml(getSavedAuthorName())}">
+
+        <label>Your rating</label>
+        <div class="star-input" id="memoryStarInput">
+          ${[1, 2, 3, 4, 5].map(i => `<span class="star star-pick" data-value="${i}">★</span>`).join('')}
+        </div>
+
+        <label>Your memory</label>
+        <textarea id="memoryTextInput" placeholder="What did you think?"></textarea>
+
+        <button type="button" class="btn btn-primary" id="postMemoryBtn">+ Add Your Memory</button>
+      </div>
+    </div>
+
+    ${place.notes ? `
+      <div class="field original-note">
+        <label>Original Note</label>
+        <p>${escapeHtml(place.notes)}</p>
       </div>` : ''}
 
     <div class="modal-actions">
@@ -215,6 +274,21 @@ function openViewModal(id) {
     img.addEventListener('click', () => openLightbox(img.src));
   });
 
+  let selectedRating = 0;
+  const starInput = document.getElementById('memoryStarInput');
+  starInput.querySelectorAll('.star-pick').forEach(star => {
+    star.addEventListener('click', () => {
+      selectedRating = Number(star.dataset.value);
+      starInput.querySelectorAll('.star-pick').forEach(s => {
+        s.classList.toggle('star-filled', Number(s.dataset.value) <= selectedRating);
+      });
+    });
+  });
+
+  document.getElementById('postMemoryBtn').addEventListener('click', () => {
+    submitMemory(place.id, selectedRating);
+  });
+
   document.getElementById('viewCloseBtn').addEventListener('click', closeViewModal);
   document.getElementById('editPlaceBtn').addEventListener('click', () => {
     closeViewModal();
@@ -222,6 +296,44 @@ function openViewModal(id) {
   });
 
   document.getElementById('viewOverlay').classList.remove('hidden');
+}
+
+async function submitMemory(placeId, rating) {
+  const authorInput = document.getElementById('memoryAuthorInput');
+  const textInput = document.getElementById('memoryTextInput');
+  const author = authorInput.value.trim();
+  const text = textInput.value.trim();
+
+  if (!author) {
+    alert('Let us know who you are first!');
+    return;
+  }
+  if (!rating) {
+    alert('Pick a star rating first!');
+    return;
+  }
+
+  const place = places.find(p => p.id === placeId);
+  if (!place) return;
+
+  const newMemory = { id: uid(), author, rating, text };
+  const updatedMemories = [...(place.memories || []), newMemory];
+
+  const postBtn = document.getElementById('postMemoryBtn');
+  postBtn.disabled = true;
+  postBtn.textContent = 'Posting…';
+
+  try {
+    await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
+    saveAuthorName(author);
+    place.memories = updatedMemories;
+    openViewModal(placeId);
+  } catch (err) {
+    console.error(err);
+    alert('Could not post your memory — check your internet connection and try again.');
+    postBtn.disabled = false;
+    postBtn.textContent = '+ Add Your Memory';
+  }
 }
 
 function closeViewModal() {

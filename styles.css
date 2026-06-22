@@ -306,6 +306,145 @@ main {
   cursor: pointer;
 }
 
+/* Memories */
+.memories-section {
+  margin: 22px 0;
+  padding: 16px;
+  background: var(--sand);
+  border: 2px solid var(--ocean);
+  border-radius: var(--radius);
+}
+
+.memories-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--ocean-dark);
+  margin-bottom: 10px;
+}
+
+.memories-avg {
+  font-size: 14px;
+  font-weight: 700;
+  color: #6b6555;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.no-memories {
+  font-size: 15px;
+  color: #8a8473;
+  margin: 0 0 12px;
+}
+
+.memory-card {
+  background: white;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+
+.memory-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.memory-author {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.memory-text {
+  margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.star-row {
+  white-space: nowrap;
+}
+
+.star {
+  color: #d8d2c0;
+  font-size: 16px;
+}
+
+.star-filled {
+  color: #ffb648;
+}
+
+.memory-form {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+
+.memory-form label {
+  display: block;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ocean-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 10px 0 4px;
+}
+
+.memory-form input[type="text"],
+.memory-form textarea {
+  width: 100%;
+  padding: 9px 11px;
+  font-size: 15px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+}
+
+.memory-form textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.star-input {
+  display: flex;
+  gap: 4px;
+}
+
+.star-pick {
+  font-size: 26px;
+  cursor: pointer;
+  transition: transform 0.05s;
+}
+
+.star-pick:hover {
+  transform: scale(1.15);
+}
+
+.memory-form .btn {
+  margin-top: 12px;
+}
+
+.original-note {
+  opacity: 0.7;
+}
+
+.original-note label {
+  font-size: 12px;
+}
+
+.original-note p {
+  font-size: 13px !important;
+}
+
 .modal-actions {
   display: flex;
   gap: 10px;
