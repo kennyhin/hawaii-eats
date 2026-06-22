@@ -7,9 +7,14 @@ import { IMGBB_API_KEY } from './imgbb-config.js';
 const PLACES_COLLECTION = 'places';
 const PROFILES_COLLECTION = 'profiles';
 
+const PLACE_ADDED_POINTS = 3;
+const MEMORY_POSTED_POINTS = 2;
+const PHOTO_ADDED_POINTS = 2;
+
 const ICON_COST = 10;
 const COLOR_COST = 25;
-const SKIN_COST = 40;
+const SKIN_COST = 45;
+const BASIC_SKIN_COST = 25;
 const OUTLINE_STYLE_COST = 10;
 const OUTLINE_COLOR_COST = 25;
 const DEFAULT_OUTLINE_COLOR = '#097c87';
@@ -47,11 +52,11 @@ const SHOP_COLORS = [
 // opacity) so memory text stays readable on top of them. Image-based custom
 // skins (dropped in /skins/) use `image` + the same overlay technique.
 const SHOP_SKINS = [
-  { id: 'skin_stripes', label: 'Stripes', cost: SKIN_COST, overlay: 0.45, css: 'repeating-linear-gradient(45deg, #fca47c, #fca47c 10px, #f9d779 10px, #f9d779 20px)' },
-  { id: 'skin_sparkle', label: 'Sparkle', cost: SKIN_COST, overlay: 0.25, css: 'radial-gradient(circle at 20% 25%, #fff8d6 0%, transparent 14%), radial-gradient(circle at 70% 65%, #fff8d6 0%, transparent 10%), radial-gradient(circle at 45% 80%, #fff8d6 0%, transparent 8%), linear-gradient(135deg, #d8c6f0, #aee3f0)' },
-  { id: 'skin_sunset', label: 'Sunset', cost: SKIN_COST, overlay: 0.35, css: 'linear-gradient(135deg, #fca47c, #f9d779, #23ced9)' },
-  { id: 'skin_polka', label: 'Polka Dots', cost: SKIN_COST, overlay: 0.25, css: 'radial-gradient(circle, #ffffff 28%, transparent 30%) 0 0/18px 18px, #a1cca6' },
-  { id: 'skin_galaxy', label: 'Galaxy', cost: SKIN_COST, overlay: 0.55, css: 'radial-gradient(circle at 25% 30%, rgba(255,255,255,0.55) 0%, transparent 6%), radial-gradient(circle at 65% 55%, rgba(255,255,255,0.4) 0%, transparent 5%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.45) 0%, transparent 4%), linear-gradient(135deg, #2c2a26, #097c87)' },
+  { id: 'skin_stripes', label: 'Stripes', cost: BASIC_SKIN_COST, overlay: 0.45, css: 'repeating-linear-gradient(45deg, #fca47c, #fca47c 10px, #f9d779 10px, #f9d779 20px)' },
+  { id: 'skin_sparkle', label: 'Sparkle', cost: BASIC_SKIN_COST, overlay: 0.25, css: 'radial-gradient(circle at 20% 25%, #fff8d6 0%, transparent 14%), radial-gradient(circle at 70% 65%, #fff8d6 0%, transparent 10%), radial-gradient(circle at 45% 80%, #fff8d6 0%, transparent 8%), linear-gradient(135deg, #d8c6f0, #aee3f0)' },
+  { id: 'skin_sunset', label: 'Sunset', cost: BASIC_SKIN_COST, overlay: 0.35, css: 'linear-gradient(135deg, #fca47c, #f9d779, #23ced9)' },
+  { id: 'skin_polka', label: 'Polka Dots', cost: BASIC_SKIN_COST, overlay: 0.25, css: 'radial-gradient(circle, #ffffff 28%, transparent 30%) 0 0/18px 18px, #a1cca6' },
+  { id: 'skin_galaxy', label: 'Galaxy', cost: BASIC_SKIN_COST, overlay: 0.55, css: 'radial-gradient(circle at 25% 30%, rgba(255,255,255,0.55) 0%, transparent 6%), radial-gradient(circle at 65% 55%, rgba(255,255,255,0.4) 0%, transparent 5%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.45) 0%, transparent 4%), linear-gradient(135deg, #2c2a26, #097c87)' },
   { id: 'skin_f1_ferrari', label: 'F1 Ferrari', cost: SKIN_COST, overlay: 0.45, image: 'skins/f1_skin1.png' },
   { id: 'skin_f1_petronas', label: 'F1 Petronas', cost: SKIN_COST, overlay: 0.3, image: 'skins/f1_skin2.png' },
   { id: 'skin_f1_neon', label: 'F1 Neon', cost: SKIN_COST, overlay: 0.4, image: 'skins/f1_skin3.png' },
@@ -74,7 +79,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622b') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622c') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -481,14 +486,14 @@ function computeRawPointsStats() {
     if (addedBy) {
       const s = ensure(addedBy);
       s.placesAdded += 1;
-      s.points += 2;
+      s.points += PLACE_ADDED_POINTS;
     }
     (place.memories || []).forEach(m => {
       const key = (m.author || '').trim();
       if (!key) return;
       const s = ensure(key, m.color);
       s.memoriesCount += 1;
-      s.points += 1;
+      s.points += MEMORY_POSTED_POINTS;
       s.ratingSum += (m.rating || 0);
       s.color = m.color || s.color;
     });
@@ -497,7 +502,7 @@ function computeRawPointsStats() {
       if (!key) return;
       const s = ensure(key);
       s.photosAdded += 1;
-      s.points += 1;
+      s.points += PHOTO_ADDED_POINTS;
     });
   });
 
@@ -555,7 +560,7 @@ function openLeaderboard() {
   modal.innerHTML = `
     <button class="modal-close" id="leaderboardCloseBtn">✕</button>
     <h2>🏆 Top Contributors</h2>
-    <p class="leaderboard-legend">+2 pts for adding a place · +1 pt for each memory you post · +1 pt for each photo you add · Shop purchases subtract from your balance</p>
+    <p class="leaderboard-legend">+${PLACE_ADDED_POINTS} pts for adding a place · +${MEMORY_POSTED_POINTS} pts for each memory you post · +${PHOTO_ADDED_POINTS} pts for each photo you add · Shop purchases subtract from your balance</p>
     ${data.length ? `
       <div class="leaderboard-list">
         ${data.map((c, i) => {
@@ -652,7 +657,7 @@ function openShop() {
   modal.innerHTML = `
     <button class="modal-close" id="shopCloseBtn">✕</button>
     <h2>🛍️ Shop</h2>
-    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Memory skins ${SKIN_COST} pts · Outline style ${OUTLINE_STYLE_COST} pts · Outline color ${OUTLINE_COLOR_COST} pts</p>
+    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Basic skins ${BASIC_SKIN_COST} pts · Custom skins ${SKIN_COST} pts · Outline style ${OUTLINE_STYLE_COST} pts · Outline color ${OUTLINE_COLOR_COST} pts</p>
 
     <div class="shop-name-field">
       <label>Who are you?</label>
@@ -988,11 +993,11 @@ function activityText(item) {
   const who = authorBadgeHtml(item.author);
   switch (item.type) {
     case 'place_added':
-      return `${who} added <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(2)}`;
+      return `${who} added <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(PLACE_ADDED_POINTS)}`;
     case 'photo_added':
-      return `${who} added a photo to <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(1)}`;
+      return `${who} added a photo to <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(PHOTO_ADDED_POINTS)}`;
     case 'memory_added':
-      return `${who} left a ${item.rating}★ memory on <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(1)}`;
+      return `${who} left a ${item.rating}★ memory on <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(MEMORY_POSTED_POINTS)}`;
     case 'like':
       return `${who} 👍 liked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'dislike':
@@ -1249,7 +1254,7 @@ function openViewModal(id) {
     <div class="field" id="photoFieldWrapper">
       <div class="photo-field-header">
         <label>Photos</label>
-        <button type="button" class="btn-add-photo" id="addPhotoBtn">📸 Add Photo (+1 pt)</button>
+        <button type="button" class="btn-add-photo" id="addPhotoBtn">📸 Add Photo (+${PHOTO_ADDED_POINTS} pts)</button>
         <input type="file" id="photoInput" accept="image/*" multiple class="visually-hidden">
       </div>
       <div class="photo-gallery" id="photoGallery">${renderPhotoGalleryItems(place)}</div>
