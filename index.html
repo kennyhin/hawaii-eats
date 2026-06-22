@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260622d">
+<link rel="stylesheet" href="styles.css?v=20260622f">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 </head>
 <body>
@@ -22,20 +22,33 @@
 
 <main>
   <div class="controls">
-    <input type="search" id="searchBox" placeholder="Search places...">
-    <select id="cuisineFilterSelect"></select>
-    <select id="sortSelect">
-      <option value="az">Sort A → Z</option>
-      <option value="za">Sort Z → A</option>
-      <option value="best">★ Best Rated</option>
-      <option value="worst">★ Worst Rated</option>
-    </select>
+    <div class="search-row">
+      <input type="search" id="searchBox" placeholder="Search places...">
+      <button type="button" class="btn-filters" id="filtersToggleBtn">⚙️ Filter &amp; Sort</button>
+      <div class="filters-panel hidden" id="filtersPanel">
+        <label for="cuisineFilterSelect">Type</label>
+        <select id="cuisineFilterSelect"></select>
+        <label for="sortSelect">Sort</label>
+        <select id="sortSelect">
+          <option value="az">A → Z</option>
+          <option value="za">Z → A</option>
+          <option value="best">★ Best Rated</option>
+          <option value="worst">★ Worst Rated</option>
+        </select>
+      </div>
+    </div>
     <button class="btn btn-secondary" id="leaderboardBtn">🏆 Leaderboard</button>
     <button class="btn btn-secondary" id="randomizerBtn">🎲 Randomize</button>
     <button class="btn btn-secondary" id="shopBtn">🛍️ Shop</button>
-    <button class="btn btn-secondary" id="moderatorBtn">🛡️ Moderator</button>
+    <button class="btn btn-secondary" id="gameBtn">🎾 Tennis</button>
     <button class="btn btn-primary" id="addPlaceBtn">+ Add a Place</button>
   </div>
+
+  <div class="daily-reward-bubble" id="dailyRewardBubble">
+    <span class="daily-reward-icon">🎁</span>
+    <span class="daily-reward-text" id="dailyRewardText">Daily Reward — Claim +5 pts</span>
+  </div>
+
   <section class="activity-feed" id="activityFeed">
     <h3>📰 Recent Activity</h3>
     <div class="activity-list" id="activityList"></div>
@@ -118,18 +131,28 @@
   <div class="modal" id="moderatorModal"></div>
 </div>
 
+<!-- Tennis Game Modal -->
+<div class="overlay hidden" id="gameOverlay">
+  <div class="modal modal-wide" id="gameModal"></div>
+</div>
+
 <!-- Lightbox -->
 <div class="overlay hidden" id="lightboxOverlay">
   <button class="modal-close" id="lightboxCloseBtn" style="position:fixed; top:20px; right:20px;">✕</button>
   <div class="lightbox-stack">
+    <button type="button" class="lightbox-nav-btn lightbox-prev-btn" id="lightboxPrevBtn">‹</button>
     <img class="lightbox-img" id="lightboxImg" src="" alt="">
+    <button type="button" class="lightbox-nav-btn lightbox-next-btn" id="lightboxNextBtn">›</button>
     <a class="lightbox-website-link" id="lightboxWebsiteLink" target="_blank" rel="noopener noreferrer" style="display:none;">🔗 Visit Website</a>
   </div>
 </div>
 
+<!-- Discreet moderator entry point — intentionally tiny and tucked in a corner -->
+<button type="button" class="moderator-corner-btn" id="moderatorBtn" title="Moderator">🔒</button>
+
 <!-- Bump the ?v= on these whenever app.js/styles.css/hawaii_seed.js change, so
      everyone's browser fetches the new version instead of a stale cached copy. -->
-<script src="hawaii_seed.js?v=20260622d"></script>
-<script type="module" src="app.js?v=20260622d"></script>
+<script src="hawaii_seed.js?v=20260622f"></script>
+<script type="module" src="app.js?v=20260622f"></script>
 </body>
 </html>

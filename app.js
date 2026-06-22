@@ -17,6 +17,7 @@ const SKIN_COST = 45;
 const BASIC_SKIN_COST = 25;
 const OUTLINE_STYLE_COST = 10;
 const OUTLINE_COLOR_COST = 25;
+const ANIMATED_COST = 30;
 const DEFAULT_OUTLINE_COLOR = '#097c87';
 
 const SHOP_ICONS = [
@@ -46,6 +47,12 @@ const SHOP_COLORS = [
   { id: 'color_electricblue', label: 'Electric Blue', hex: '#1e6fff', cost: COLOR_COST },
   { id: 'color_emerald', label: 'Emerald', hex: '#0f9a5e', cost: COLOR_COST },
   { id: 'color_lavender', label: 'Lavender', hex: '#8c6fd4', cost: COLOR_COST },
+  { id: 'color_crimson', label: 'Crimson', hex: '#c81e3a', cost: COLOR_COST },
+  { id: 'color_teal', label: 'Teal', hex: '#0e8a8a', cost: COLOR_COST },
+  { id: 'color_indigo', label: 'Indigo', hex: '#4338ca', cost: COLOR_COST },
+  { id: 'color_burnt_orange', label: 'Burnt Orange', hex: '#d2691e', cost: COLOR_COST },
+  { id: 'color_magenta', label: 'Magenta', hex: '#c2186e', cost: COLOR_COST },
+  { id: 'color_olive', label: 'Olive', hex: '#6b7a1f', cost: COLOR_COST },
 ];
 
 // Gradient skins get a translucent white wash mixed in (via the `overlay`
@@ -73,13 +80,19 @@ const SHOP_SKINS = [
   { id: 'skin_starlord', label: 'Star-Lord', cost: SKIN_COST, overlay: 0.35, image: 'skins/Starlord_skin.png' },
   { id: 'skin_minecraft', label: 'Minecraft Blocks', cost: SKIN_COST, overlay: 0.25, image: 'skins/minecraft_skin.png' },
   { id: 'skin_minecraft_crew', label: 'Minecraft Crew', cost: SKIN_COST, overlay: 0.3, image: 'skins/minecraft2_skin.png' },
+  // Dynamic skins render their background entirely through the matching CSS
+  // class (no inline background) so the animation can't be fought by inline styles.
+  { id: 'skin_shimmer', label: 'Shimmer Wave', cost: ANIMATED_COST, animationClass: 'skin-anim-shimmer' },
+  { id: 'skin_rainbow_pop', label: 'Rainbow Pop', cost: ANIMATED_COST, animationClass: 'skin-anim-rainbow' },
+  { id: 'skin_confetti', label: 'Confetti Burst', cost: ANIMATED_COST, animationClass: 'skin-anim-confetti' },
 ];
 
 function skinBackgroundCss(skin) {
+  if (skin.animationClass) return '';
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622d') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622f') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -91,6 +104,8 @@ const SHOP_OUTLINE_STYLES = [
   { id: 'outline_dotted', label: 'Dotted', cost: OUTLINE_STYLE_COST, borderStyle: 'dotted', width: '3px' },
   { id: 'outline_dashed', label: 'Dashed', cost: OUTLINE_STYLE_COST, borderStyle: 'dashed', width: '3px' },
   { id: 'outline_bold', label: 'Bold', cost: OUTLINE_STYLE_COST, borderStyle: 'solid', width: '6px' },
+  { id: 'outline_glow', label: 'Glow Pulse', cost: ANIMATED_COST, animationClass: 'outline-anim-glow' },
+  { id: 'outline_rainbow', label: 'Rainbow Cycle', cost: ANIMATED_COST, animationClass: 'outline-anim-rainbow' },
 ];
 
 const SHOP_OUTLINE_COLORS = [
@@ -100,13 +115,25 @@ const SHOP_OUTLINE_COLORS = [
   { id: 'outlinecolor_lavender', label: 'Lavender', cost: OUTLINE_COLOR_COST, hex: '#8c6fd4' },
   { id: 'outlinecolor_coral', label: 'Coral', cost: OUTLINE_COLOR_COST, hex: '#fc6f4d' },
   { id: 'outlinecolor_slate', label: 'Slate', cost: OUTLINE_COLOR_COST, hex: '#4a5568' },
+  { id: 'outlinecolor_mint', label: 'Mint', cost: OUTLINE_COLOR_COST, hex: '#2dd4a8' },
+  { id: 'outlinecolor_sky', label: 'Sky Blue', cost: OUTLINE_COLOR_COST, hex: '#38bdf8' },
+  { id: 'outlinecolor_plum', label: 'Plum', cost: OUTLINE_COLOR_COST, hex: '#9333ea' },
+  { id: 'outlinecolor_mustard', label: 'Mustard', cost: OUTLINE_COLOR_COST, hex: '#d4a017' },
 ];
+
+function outlineAnimationClass(styleId) {
+  const styleItem = SHOP_OUTLINE_STYLES.find(s => s.id === styleId);
+  return styleItem?.animationClass || '';
+}
 
 function bubbleOutlineCss(styleId, colorId) {
   if (!styleId && !colorId) return '';
   const styleItem = SHOP_OUTLINE_STYLES.find(s => s.id === styleId) || SHOP_OUTLINE_STYLES[0];
   const colorItem = colorId ? SHOP_OUTLINE_COLORS.find(c => c.id === colorId) : null;
   const hex = colorItem ? colorItem.hex : DEFAULT_OUTLINE_COLOR;
+  if (styleItem.animationClass) {
+    return `--outline-glow-color: ${hex};`;
+  }
   return `border: ${styleItem.width} ${styleItem.borderStyle} ${hex};`;
 }
 
@@ -118,11 +145,19 @@ const EQUIP_FIELD = {
   icon: 'equippedIcon', color: 'equippedColor', skin: 'equippedSkin',
   outlineStyle: 'equippedOutlineStyle', outlineColor: 'equippedOutlineColor',
 };
-const COUNTRIES = ['Hawaii', 'Japan'];
+const COUNTRIES = ['Hawaii', 'Japan', 'Las Vegas'];
+const COUNTRY_EMOJI = { Hawaii: '🌴', Japan: '🗻', 'Las Vegas': '🎰' };
 // left,top,right,bottom (lon/lat) per Nominatim viewbox format
 const COUNTRY_VIEWBOX = {
   Hawaii: '-160.3,22.3,-154.7,18.8',
   Japan: '129,46,146,24',
+  'Las Vegas': '-115.4,36.4,-114.9,35.9',
+};
+// Which sub-categories each destination supports — Las Vegas has no beaches.
+const COUNTRY_CATEGORIES = {
+  Hawaii: ['eats', 'beaches', 'hikes'],
+  Japan: ['eats'],
+  'Las Vegas': ['eats', 'hikes'],
 };
 const CUISINES = [
   'Hawaiian / Local', 'Japanese', 'Korean', 'Chinese', 'Vietnamese',
@@ -131,10 +166,9 @@ const CUISINES = [
   'Food Court / Variety', 'Other',
 ];
 
-// Hawaii is split into sub-sections (Eats / Beaches / Hikes). Each reuses the
-// same place/photo/memory/leaderboard machinery, but the "type" dropdown and
-// extra fields differ per section. Japan has no sub-sections — it's eats-only.
-const CATEGORIES = ['eats', 'beaches', 'hikes'];
+// Each destination is split into sub-sections (Eats / Beaches / Hikes), per
+// COUNTRY_CATEGORIES above. Each reuses the same place/photo/memory/leaderboard
+// machinery, but the "type" dropdown and extra fields differ per section.
 const CATEGORY_CONFIG = {
   eats: { label: '🍽️ Eats', singular: 'a Place', tagLabel: 'What type of food is it?', tagOptions: CUISINES, hasDistance: false },
   beaches: { label: '🏖️ Beaches', singular: 'a Beach', tagLabel: 'What kind of beach is it?', tagOptions: ['Family-Friendly', 'Surfing', 'Snorkeling', 'Sunset Spot', 'Tide Pools', 'Other'], hasDistance: false },
@@ -230,6 +264,7 @@ function subscribeToProfiles() {
     snapshot.docs.forEach(d => { profiles[d.id] = d.data(); });
     renderList();
     renderActivityFeed();
+    renderDailyRewardBubble();
     if (!document.getElementById('shopOverlay').classList.contains('hidden')) {
       openShop();
     }
@@ -244,10 +279,11 @@ function renderTabs() {
   tabsEl.innerHTML = '';
   COUNTRIES.forEach(country => {
     const btn = document.createElement('button');
-    btn.className = 'tab-btn' + (state.activeTab === country ? ' active' : '');
-    btn.textContent = country;
+    btn.className = 'dest-card' + (state.activeTab === country ? ' active' : '');
+    btn.innerHTML = `<span class="dest-card-emoji">${COUNTRY_EMOJI[country] || '📍'}</span><span class="dest-card-label">${country}</span>`;
     btn.addEventListener('click', () => {
       state.activeTab = country;
+      state.activeCategory = COUNTRY_CATEGORIES[country][0];
       state.cuisineFilter = 'all';
       renderTabs();
       renderCategoryTabs();
@@ -261,7 +297,8 @@ function renderTabs() {
 
 function renderCategoryTabs() {
   const el = document.getElementById('categoryTabs');
-  if (state.activeTab !== 'Hawaii') {
+  const cats = COUNTRY_CATEGORIES[state.activeTab] || ['eats'];
+  if (cats.length <= 1) {
     el.innerHTML = '';
     el.style.display = 'none';
     updateAddPlaceBtnLabel();
@@ -269,9 +306,9 @@ function renderCategoryTabs() {
   }
   el.style.display = '';
   el.innerHTML = '';
-  CATEGORIES.forEach(cat => {
+  cats.forEach(cat => {
     const btn = document.createElement('button');
-    btn.className = 'tab-btn tab-btn-sub' + (state.activeCategory === cat ? ' active' : '');
+    btn.className = 'tab-btn tab-btn-sub' + (activeCategory() === cat ? ' active' : '');
     btn.textContent = CATEGORY_CONFIG[cat].label;
     btn.addEventListener('click', () => {
       state.activeCategory = cat;
@@ -286,7 +323,8 @@ function renderCategoryTabs() {
 }
 
 function activeCategory() {
-  return state.activeTab === 'Hawaii' ? state.activeCategory : 'eats';
+  const cats = COUNTRY_CATEGORIES[state.activeTab] || ['eats'];
+  return cats.includes(state.activeCategory) ? state.activeCategory : cats[0];
 }
 
 function updateAddPlaceBtnLabel() {
@@ -352,7 +390,9 @@ function creditBadgeHtml(name) {
   if (!name) return '';
   const profile = getProfile(name);
   const icon = profile?.equippedIcon ? SHOP_ICONS.find(i => i.id === profile.equippedIcon)?.emoji : '';
-  return `<span class="credit-badge" title="Added by ${escapeHtml(name)}">${icon ? icon + ' ' : '👤 '}${escapeHtml(name)}</span>`;
+  const colorItem = profile?.equippedColor ? SHOP_COLORS.find(c => c.id === profile.equippedColor) : null;
+  const style = colorItem ? ` style="color:${colorItem.hex}"` : '';
+  return `<span class="credit-badge"${style} title="Added by ${escapeHtml(name)}">${icon ? icon + ' ' : '👤 '}${escapeHtml(name)}</span>`;
 }
 
 function placeCardHtml(p, rank) {
@@ -385,7 +425,9 @@ function renderList() {
 
   const list = getFilteredSorted();
 
-  const scopeLabel = state.activeTab === 'Hawaii' ? `Hawaii ${CATEGORY_CONFIG[activeCategory()].label.replace(/^\S+\s/, '')}` : state.activeTab;
+  const scopeLabel = (COUNTRY_CATEGORIES[state.activeTab] || ['eats']).length > 1
+    ? `${state.activeTab} ${CATEGORY_CONFIG[activeCategory()].label.replace(/^\S+\s/, '')}`
+    : state.activeTab;
   countLine.textContent = `${list.length} place${list.length === 1 ? '' : 's'} in ${scopeLabel}`;
 
   if (list.length === 0) {
@@ -566,15 +608,17 @@ function openLeaderboard() {
         ${data.map((c, i) => {
           const profile = profiles[normalizeName(c.name)];
           const skin = profile?.equippedSkin ? SHOP_SKINS.find(s => s.id === profile.equippedSkin) : null;
-          const rowBg = skin ? `background:${skinBackgroundCss(skin)};` : '';
+          const rowBg = skin && !skin.animationClass ? `background:${skinBackgroundCss(skin)};` : '';
+          const rowSkinClass = skin?.animationClass || '';
           const icon = profile?.equippedIcon ? SHOP_ICONS.find(s => s.id === profile.equippedIcon)?.emoji : null;
           const colorItem = profile?.equippedColor ? SHOP_COLORS.find(s => s.id === profile.equippedColor) : null;
           const avatarBg = colorItem ? colorItem.hex : c.color;
           const avatarOutline = bubbleOutlineCss(profile?.equippedOutlineStyle, profile?.equippedOutlineColor);
+          const avatarOutlineClass = outlineAnimationClass(profile?.equippedOutlineStyle);
           return `
-          <div class="leaderboard-row" style="${rowBg}">
+          <div class="leaderboard-row ${rowSkinClass}" style="${rowBg}">
             <span class="leaderboard-rank">${medals[i] || (i + 1) + '.'}</span>
-            <span class="leaderboard-avatar" style="background:${escapeHtml(avatarBg)};${avatarOutline}">${icon || escapeHtml((c.name[0] || '?').toUpperCase())}</span>
+            <span class="leaderboard-avatar ${avatarOutlineClass}" style="background:${escapeHtml(avatarBg)};${avatarOutline}">${icon || escapeHtml((c.name[0] || '?').toUpperCase())}</span>
             <span class="leaderboard-name">${authorBadgeHtml(c.name)}</span>
             <span class="leaderboard-stats">${c.points} pts<br>${c.placesAdded} place${c.placesAdded === 1 ? '' : 's'} · ${c.memoriesCount} memor${c.memoriesCount === 1 ? 'y' : 'ies'} · ${c.photosAdded} photo${c.photosAdded === 1 ? '' : 's'}${c.creditedPoints ? ` · 🛡️ ${c.creditedPoints > 0 ? '+' : ''}${c.creditedPoints} bonus` : ''}</span>
           </div>
@@ -594,8 +638,11 @@ function closeLeaderboard() {
 function shopItemPreview(category, item) {
   if (category === 'icon') return `<span class="shop-preview shop-preview-icon" data-category="${category}" data-id="${item.id}">${item.emoji}</span>`;
   if (category === 'color') return `<span class="shop-preview shop-preview-color" data-category="${category}" data-id="${item.id}" style="background:${item.hex}"></span>`;
-  if (category === 'skin') return `<span class="shop-preview shop-preview-skin" data-category="${category}" data-id="${item.id}" style="background:${skinBackgroundCss(item)}"></span>`;
-  if (category === 'outlineStyle') return `<span class="shop-preview shop-preview-outline" data-category="${category}" data-id="${item.id}" style="border: ${item.width} ${item.borderStyle} ${DEFAULT_OUTLINE_COLOR};"></span>`;
+  if (category === 'skin') return `<span class="shop-preview shop-preview-skin ${item.animationClass || ''}" data-category="${category}" data-id="${item.id}" style="${item.animationClass ? '' : `background:${skinBackgroundCss(item)}`}"></span>`;
+  if (category === 'outlineStyle') {
+    if (item.animationClass) return `<span class="shop-preview shop-preview-outline ${item.animationClass}" data-category="${category}" data-id="${item.id}" style="--outline-glow-color:${DEFAULT_OUTLINE_COLOR};"></span>`;
+    return `<span class="shop-preview shop-preview-outline" data-category="${category}" data-id="${item.id}" style="border: ${item.width} ${item.borderStyle} ${DEFAULT_OUTLINE_COLOR};"></span>`;
+  }
   return `<span class="shop-preview shop-preview-color" data-category="${category}" data-id="${item.id}" style="background:${item.hex}"></span>`;
 }
 
@@ -618,12 +665,14 @@ function renderShopPreviewBubble(profile) {
   const icon = iconId ? SHOP_ICONS.find(i => i.id === iconId)?.emoji : '';
   const colorItem = colorId ? SHOP_COLORS.find(c => c.id === colorId) : null;
   const skin = skinId ? SHOP_SKINS.find(s => s.id === skinId) : null;
-  const bg = skin ? skinBackgroundCss(skin) : BUBBLE_COLORS[0];
+  const bg = skin && !skin.animationClass ? skinBackgroundCss(skin) : (skin ? '' : BUBBLE_COLORS[0]);
+  const skinClass = skin?.animationClass || '';
   const nameStyle = colorItem ? ` style="color:${colorItem.hex}"` : '';
   const outline = bubbleOutlineCss(outlineStyleId, outlineColorId);
+  const outlineClass = outlineAnimationClass(outlineStyleId);
   const isPreviewing = Object.keys(shopPreviewOverride).length > 0;
   return `
-    <div class="memory-bubble shop-live-preview" style="background:${bg};${outline}">
+    <div class="memory-bubble shop-live-preview ${skinClass} ${outlineClass}" style="background:${bg};${outline}">
       <div class="memory-card-top">
         <span class="memory-author"><span class="author-badge"${nameStyle}>${icon ? icon + ' ' : ''}You</span></span>
         ${renderStarsDisplay(5)}
@@ -657,7 +706,7 @@ function openShop() {
   modal.innerHTML = `
     <button class="modal-close" id="shopCloseBtn">✕</button>
     <h2>🛍️ Shop</h2>
-    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Basic skins ${BASIC_SKIN_COST} pts · Custom skins ${SKIN_COST} pts · Outline style ${OUTLINE_STYLE_COST} pts · Outline color ${OUTLINE_COLOR_COST} pts</p>
+    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Basic skins ${BASIC_SKIN_COST} pts · Custom skins ${SKIN_COST} pts · Outline style ${OUTLINE_STYLE_COST} pts · Outline color ${OUTLINE_COLOR_COST} pts · ✨ Dynamic skins/outlines ${ANIMATED_COST} pts</p>
 
     <div class="shop-name-field">
       <label>Who are you?</label>
@@ -905,6 +954,313 @@ async function submitSiteUpdate() {
   }
 }
 
+// ---------- Daily reward ----------
+const DAILY_REWARD_POINTS = 5;
+
+function todayDateString() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function renderDailyRewardBubble() {
+  const bubble = document.getElementById('dailyRewardBubble');
+  const text = document.getElementById('dailyRewardText');
+  const name = getSavedAuthorName();
+  const profile = name ? getProfile(name) : null;
+  if (profile?.lastDailyClaim === todayDateString()) {
+    bubble.classList.add('claimed');
+    text.textContent = '✓ Daily reward claimed — come back tomorrow!';
+  } else {
+    bubble.classList.remove('claimed');
+    text.textContent = `🎁 Daily Reward — Claim +${DAILY_REWARD_POINTS} pts`;
+  }
+}
+
+async function claimDailyReward() {
+  let name = getSavedAuthorName();
+  if (!name) {
+    name = (prompt("What's your name? (so we know whose daily reward to claim)") || '').trim();
+    if (!name) return;
+    saveAuthorName(name);
+  }
+  const today = todayDateString();
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+  if (profile.lastDailyClaim === today) return;
+
+  const credits = [...(profile.credits || []), { points: DAILY_REWARD_POINTS, reason: 'daily visit reward', source: 'daily', awardedAt: Date.now() }];
+  const updates = { displayName: name, credits, lastDailyClaim: today };
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+    renderDailyRewardBubble();
+    renderActivityFeed();
+    renderList();
+  } catch (err) {
+    console.error(err);
+    alert('Could not claim your daily reward — check your internet connection and try again.');
+  }
+}
+
+// ---------- Tennis mini-game ----------
+// Short best-of-3 games, first to 3 points wins a game. Entry fee is deducted
+// up front (like a Shop purchase); a match win credits the prize on top, a
+// loss just keeps the entry fee gone — no extra penalty.
+const GAME_ENTRY_COST = 10;
+const GAME_WIN_POINTS = 20;
+const ROUND_WIN_SCORE = 3;
+const MATCH_WINS_NEEDED = 2;
+
+let gameState = null;
+let gameAnimId = null;
+
+function openGame() {
+  stopGameLoop();
+  const name = getSavedAuthorName();
+  const profile = name ? getProfile(name) : null;
+  const available = name ? (getRawPoints(name) - (profile?.spentPoints || 0)) : 0;
+  const modal = document.getElementById('gameModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="gameCloseBtn">✕</button>
+    <h2>🎾 Tennis</h2>
+    <p class="hint">Short best-of-3 match (first to ${ROUND_WIN_SCORE} wins a game). Entry costs ${GAME_ENTRY_COST} pts. Win the match for +${GAME_WIN_POINTS} pts — lose, and your entry fee is gone. Drag your finger (or mouse) up and down on the court to move your racket.</p>
+    <div class="shop-name-field">
+      <label>Who's playing?</label>
+      <input type="text" id="gameNameInput" placeholder="Your name" value="${escapeHtml(name)}">
+    </div>
+    ${name ? `<p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>` : `<p class="hint">Type your name above to play.</p>`}
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="gameStartBtn" ${(!name || available < GAME_ENTRY_COST) ? 'disabled' : ''}>🎾 Start Match (-${GAME_ENTRY_COST} pts)</button>
+    </div>
+  `;
+  document.getElementById('gameCloseBtn').addEventListener('click', closeGame);
+  document.getElementById('gameNameInput').addEventListener('change', (e) => {
+    saveAuthorName(e.target.value.trim());
+    openGame();
+  });
+  const startBtn = document.getElementById('gameStartBtn');
+  if (startBtn) {
+    startBtn.addEventListener('click', () => startGameMatch(document.getElementById('gameNameInput').value.trim()));
+  }
+  document.getElementById('gameOverlay').classList.remove('hidden');
+}
+
+function closeGame() {
+  if (gameState && gameState.running) {
+    if (!confirm('Leave the match? Your progress (and entry fee) will be lost.')) return;
+  }
+  stopGameLoop();
+  document.getElementById('gameOverlay').classList.add('hidden');
+}
+
+function stopGameLoop() {
+  if (gameState) gameState.running = false;
+  if (gameAnimId) cancelAnimationFrame(gameAnimId);
+  gameAnimId = null;
+  gameState = null;
+}
+
+async function startGameMatch(name) {
+  if (!name) return;
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+  const available = getRawPoints(name) - (profile.spentPoints || 0);
+  if (available < GAME_ENTRY_COST) {
+    alert("You don't have enough points to play!");
+    return;
+  }
+  const updates = { displayName: name, spentPoints: (profile.spentPoints || 0) + GAME_ENTRY_COST };
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+    saveAuthorName(name);
+  } catch (err) {
+    console.error(err);
+    alert('Could not start the match — check your internet connection and try again.');
+    return;
+  }
+  renderGameCanvas(name);
+}
+
+function renderGameCanvas(name) {
+  const modal = document.getElementById('gameModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="gameCloseBtn">✕</button>
+    <h2 id="tennisGameTitle">🎾 Tennis — Game 1</h2>
+    <div class="tennis-scoreboard">
+      <span id="tennisPlayerScore">You: 0</span>
+      <span id="tennisMatchScore">Match: 0 – 0</span>
+      <span id="tennisCpuScore">CPU: 0</span>
+    </div>
+    <canvas id="tennisCanvas" width="600" height="360"></canvas>
+    <p class="hint">Drag up/down on the court to move your racket.</p>
+  `;
+  document.getElementById('gameCloseBtn').addEventListener('click', closeGame);
+
+  const canvas = document.getElementById('tennisCanvas');
+  const ctx = canvas.getContext('2d');
+  gameState = {
+    name,
+    canvas, ctx,
+    w: canvas.width, h: canvas.height,
+    paddleW: 10, paddleH: 70,
+    playerY: canvas.height / 2 - 35,
+    cpuY: canvas.height / 2 - 35,
+    ballX: canvas.width / 2, ballY: canvas.height / 2,
+    ballVX: 4 * (Math.random() < 0.5 ? 1 : -1), ballVY: 3 * (Math.random() < 0.5 ? 1 : -1),
+    playerScore: 0, cpuScore: 0,
+    roundsWonPlayer: 0, roundsWonCpu: 0,
+    gameNum: 1,
+    running: true,
+  };
+
+  function moveTo(clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const scale = canvas.height / rect.height;
+    const y = (clientY - rect.top) * scale;
+    gameState.playerY = Math.max(0, Math.min(canvas.height - gameState.paddleH, y - gameState.paddleH / 2));
+  }
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    moveTo(e.touches[0].clientY);
+  }, { passive: false });
+  canvas.addEventListener('mousemove', (e) => moveTo(e.clientY));
+
+  drawGame(gameState);
+  gameAnimId = requestAnimationFrame(gameLoop);
+}
+
+function resetBall(g, dir) {
+  g.ballX = g.w / 2;
+  g.ballY = g.h / 2;
+  g.ballVX = 4 * dir;
+  g.ballVY = 3 * (Math.random() < 0.5 ? 1 : -1);
+}
+
+function gameLoop() {
+  if (!gameState || !gameState.running) return;
+  const g = gameState;
+
+  g.ballX += g.ballVX;
+  g.ballY += g.ballVY;
+
+  if (g.ballY <= 0 || g.ballY >= g.h) g.ballVY *= -1;
+
+  // Medium-difficulty CPU: capped speed plus a little aim imprecision, so it
+  // tracks the ball but isn't perfect.
+  const cpuCenter = g.cpuY + g.paddleH / 2;
+  const targetY = g.ballY + (Math.random() - 0.5) * 30;
+  const cpuSpeed = 3.5;
+  if (cpuCenter < targetY - 5) g.cpuY += cpuSpeed;
+  else if (cpuCenter > targetY + 5) g.cpuY -= cpuSpeed;
+  g.cpuY = Math.max(0, Math.min(g.h - g.paddleH, g.cpuY));
+
+  if (g.ballX <= g.paddleW + 6 && g.ballX > 0 && g.ballY >= g.playerY && g.ballY <= g.playerY + g.paddleH && g.ballVX < 0) {
+    g.ballVX *= -1.05;
+    g.ballVY += (g.ballY - (g.playerY + g.paddleH / 2)) * 0.15;
+  }
+  if (g.ballX >= g.w - g.paddleW - 6 && g.ballX < g.w && g.ballY >= g.cpuY && g.ballY <= g.cpuY + g.paddleH && g.ballVX > 0) {
+    g.ballVX *= -1.05;
+    g.ballVY += (g.ballY - (g.cpuY + g.paddleH / 2)) * 0.15;
+  }
+
+  if (g.ballX < 0) {
+    g.cpuScore += 1;
+    resetBall(g, 1);
+  } else if (g.ballX > g.w) {
+    g.playerScore += 1;
+    resetBall(g, -1);
+  }
+
+  drawGame(g);
+
+  if (g.playerScore >= ROUND_WIN_SCORE || g.cpuScore >= ROUND_WIN_SCORE) {
+    endGameRound();
+    return;
+  }
+
+  gameAnimId = requestAnimationFrame(gameLoop);
+}
+
+function drawGame(g) {
+  const ctx = g.ctx;
+  ctx.fillStyle = '#0c2b2e';
+  ctx.fillRect(0, 0, g.w, g.h);
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.setLineDash([6, 10]);
+  ctx.beginPath();
+  ctx.moveTo(g.w / 2, 0);
+  ctx.lineTo(g.w / 2, g.h);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(4, g.playerY, g.paddleW, g.paddleH);
+  ctx.fillRect(g.w - g.paddleW - 4, g.cpuY, g.paddleW, g.paddleH);
+  ctx.beginPath();
+  ctx.arc(g.ballX, g.ballY, 7, 0, Math.PI * 2);
+  ctx.fill();
+  document.getElementById('tennisPlayerScore').textContent = `You: ${g.playerScore}`;
+  document.getElementById('tennisCpuScore').textContent = `CPU: ${g.cpuScore}`;
+}
+
+function endGameRound() {
+  const g = gameState;
+  if (g.playerScore > g.cpuScore) g.roundsWonPlayer += 1;
+  else g.roundsWonCpu += 1;
+
+  if (g.roundsWonPlayer >= MATCH_WINS_NEEDED || g.roundsWonCpu >= MATCH_WINS_NEEDED) {
+    endGameMatch(g.roundsWonPlayer > g.roundsWonCpu);
+    return;
+  }
+
+  g.gameNum += 1;
+  g.playerScore = 0;
+  g.cpuScore = 0;
+  resetBall(g, Math.random() < 0.5 ? 1 : -1);
+  document.getElementById('tennisGameTitle').textContent = `🎾 Tennis — Game ${g.gameNum}`;
+  document.getElementById('tennisMatchScore').textContent = `Match: ${g.roundsWonPlayer} – ${g.roundsWonCpu}`;
+  gameAnimId = requestAnimationFrame(gameLoop);
+}
+
+async function endGameMatch(playerWon) {
+  gameState.running = false;
+  cancelAnimationFrame(gameAnimId);
+  const name = gameState.name;
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+
+  if (playerWon) {
+    const credits = [...(profile.credits || []), { points: GAME_WIN_POINTS, reason: 'won a Tennis match', source: 'game', awardedAt: Date.now() }];
+    const updates = { displayName: name, credits };
+    try {
+      await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+      profiles[key] = { ...profile, ...updates };
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  renderActivityFeed();
+  renderList();
+
+  const modal = document.getElementById('gameModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="gameCloseBtn">✕</button>
+    <div class="randomizer-result">
+      <div class="randomizer-dice">${playerWon ? '🏆' : '😢'}</div>
+      <h2>${playerWon ? 'You won the match!' : 'You lost the match.'}</h2>
+      <p class="hint">${playerWon ? `+${GAME_WIN_POINTS} pts awarded!` : `Your ${GAME_ENTRY_COST} pt entry fee is gone — better luck next time!`}</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="gamePlayAgainBtn">🎾 Play Again</button>
+      <button type="button" class="btn btn-secondary" id="gameDoneBtn">Close</button>
+    </div>
+  `;
+  document.getElementById('gameCloseBtn').addEventListener('click', closeGame);
+  document.getElementById('gameDoneBtn').addEventListener('click', closeGame);
+  document.getElementById('gamePlayAgainBtn').addEventListener('click', () => openGame());
+}
+
 // ---------- Activity feed ----------
 function computeActivityFeed(limit = 8) {
   const events = [];
@@ -955,7 +1311,7 @@ function computeActivityFeed(limit = 8) {
   Object.values(profiles).forEach(profile => {
     (profile.credits || []).forEach(credit => {
       events.push({
-        type: 'moderator_credit',
+        type: credit.source === 'daily' ? 'daily_reward' : (credit.source === 'game' ? 'game_result' : 'moderator_credit'),
         timestamp: credit.awardedAt,
         creditedName: profile.displayName,
         points: credit.points,
@@ -1006,6 +1362,10 @@ function activityText(item) {
       return `${who} 😂 found ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong> funny`;
     case 'moderator_credit':
       return `Moderator credited ${authorBadgeHtml(item.creditedName)} ${pointsBadge(item.points)} for ${escapeHtml(item.reason)}`;
+    case 'daily_reward':
+      return `${authorBadgeHtml(item.creditedName)} claimed their daily reward ${pointsBadge(item.points)}`;
+    case 'game_result':
+      return `${authorBadgeHtml(item.creditedName)} ${escapeHtml(item.reason)} ${pointsBadge(item.points)}`;
     case 'site_update':
       return `<strong>New Update:</strong> ${escapeHtml(item.message)}`;
     default:
@@ -1014,7 +1374,7 @@ function activityText(item) {
 }
 
 function activityIcon(type) {
-  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', moderator_credit: '🛡️', site_update: '📢' }[type] || '•';
+  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', site_update: '📢' }[type] || '•';
 }
 
 function renderActivityFeed() {
@@ -1100,7 +1460,7 @@ function renderPhotoGalleryItems(place) {
 function wireGalleryHandlers(place) {
   const gallery = document.getElementById('photoGallery');
   gallery.querySelectorAll('img').forEach(img => {
-    img.addEventListener('click', () => openLightbox(img.src, place.website));
+    img.addEventListener('click', () => openLightbox(place.photos, Number(img.dataset.idx), place.website));
   });
   gallery.querySelectorAll('.photo-delete-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -1272,10 +1632,12 @@ function openViewModal(id) {
           const reaction = getReaction(m.id);
           const authorProfile = getProfile(m.author);
           const skin = authorProfile?.equippedSkin ? SHOP_SKINS.find(s => s.id === authorProfile.equippedSkin) : null;
-          const bubbleBg = skin ? skinBackgroundCss(skin) : (m.color || BUBBLE_COLORS[0]);
+          const bubbleBg = skin && !skin.animationClass ? skinBackgroundCss(skin) : (skin ? '' : (m.color || BUBBLE_COLORS[0]));
+          const skinClass = skin?.animationClass || '';
           const bubbleOutline = bubbleOutlineCss(authorProfile?.equippedOutlineStyle, authorProfile?.equippedOutlineColor);
+          const outlineClass = outlineAnimationClass(authorProfile?.equippedOutlineStyle);
           return `
-          <div class="memory-bubble ${isTop ? 'memory-bubble-top' : ''}" style="background:${bubbleBg};${bubbleOutline}">
+          <div class="memory-bubble ${isTop ? 'memory-bubble-top' : ''} ${skinClass} ${outlineClass}" style="background:${bubbleBg};${bubbleOutline}">
             <div class="memory-card-top">
               <span class="memory-author">${authorBadgeHtml(m.author)} ${isTop ? '<span class="top-badge">🥇 #1</span>' : ''}</span>
               <div class="memory-actions">
@@ -1289,6 +1651,23 @@ function openViewModal(id) {
               <button type="button" class="reaction-btn ${reaction === 'like' ? 'reaction-active' : ''}" data-type="like" data-id="${m.id}">👍 ${m.likes || 0}</button>
               <button type="button" class="reaction-btn ${reaction === 'dislike' ? 'reaction-active' : ''}" data-type="dislike" data-id="${m.id}">👎 ${m.dislikes || 0}</button>
               <button type="button" class="reaction-btn ${reaction === 'funny' ? 'reaction-active' : ''}" data-type="funny" data-id="${m.id}">😂 ${m.funny || 0}</button>
+              <button type="button" class="reaction-btn-look reply-toggle-btn" data-id="${m.id}">💬 Reply${(m.replies || []).length ? ` (${m.replies.length})` : ''}</button>
+            </div>
+            ${(m.replies || []).length ? `
+              <div class="reply-list">
+                ${m.replies.map(r => `
+                  <div class="reply-item">
+                    <span class="reply-author">${authorBadgeHtml(r.author)}</span>
+                    <span class="reply-text">${escapeHtml(r.text)}</span>
+                    <button type="button" class="reply-delete-btn" data-memory-id="${m.id}" data-reply-id="${r.id}" title="Delete reply">✕</button>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+            <div class="reply-form" data-id="${m.id}" style="display:none;">
+              <input type="text" class="reply-author-input" placeholder="Your name" value="${escapeHtml(getSavedAuthorName())}">
+              <input type="text" class="reply-text-input" placeholder="Write a reply…">
+              <button type="button" class="btn-reply-submit" data-id="${m.id}">Send</button>
             </div>
           </div>
         `;
@@ -1392,6 +1771,27 @@ function openViewModal(id) {
   });
   modal.querySelectorAll('.reaction-btn').forEach(btn => {
     btn.addEventListener('click', () => toggleReaction(place.id, btn.dataset.id, btn.dataset.type));
+  });
+  modal.querySelectorAll('.reply-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const form = modal.querySelector(`.reply-form[data-id="${btn.dataset.id}"]`);
+      if (!form) return;
+      const showing = form.style.display !== 'none';
+      modal.querySelectorAll('.reply-form').forEach(f => { f.style.display = 'none'; });
+      form.style.display = showing ? 'none' : 'flex';
+      if (!showing) form.querySelector('.reply-text-input').focus();
+    });
+  });
+  modal.querySelectorAll('.btn-reply-submit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const form = modal.querySelector(`.reply-form[data-id="${btn.dataset.id}"]`);
+      const author = form.querySelector('.reply-author-input').value.trim();
+      const text = form.querySelector('.reply-text-input').value.trim();
+      submitReply(place.id, btn.dataset.id, author, text);
+    });
+  });
+  modal.querySelectorAll('.reply-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => deleteReply(place.id, btn.dataset.memoryId, btn.dataset.replyId));
   });
 
   document.getElementById('cancelEditBtn').addEventListener('click', resetMemoryForm);
@@ -1510,13 +1910,64 @@ async function toggleReaction(placeId, memoryId, type) {
   }
 }
 
+async function submitReply(placeId, memoryId, author, text) {
+  if (!author || !text) {
+    alert('Add your name and a reply first!');
+    return;
+  }
+  const place = places.find(p => p.id === placeId);
+  if (!place) return;
+
+  const newReply = { id: uid(), author, text, createdAt: Date.now() };
+  const updatedMemories = (place.memories || []).map(m =>
+    m.id === memoryId ? { ...m, replies: [...(m.replies || []), newReply] } : m
+  );
+
+  try {
+    await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
+    saveAuthorName(author);
+    place.memories = updatedMemories;
+    openViewModal(placeId);
+  } catch (err) {
+    console.error(err);
+    alert('Could not post your reply — check your internet connection and try again.');
+  }
+}
+
+async function deleteReply(placeId, memoryId, replyId) {
+  if (!confirm('Delete this reply?')) return;
+  const place = places.find(p => p.id === placeId);
+  if (!place) return;
+  const updatedMemories = (place.memories || []).map(m =>
+    m.id === memoryId ? { ...m, replies: (m.replies || []).filter(r => r.id !== replyId) } : m
+  );
+  try {
+    await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
+    place.memories = updatedMemories;
+    openViewModal(placeId);
+  } catch (err) {
+    console.error(err);
+    alert('Could not delete the reply — check your internet connection and try again.');
+  }
+}
+
 function closeViewModal() {
   document.getElementById('viewOverlay').classList.add('hidden');
 }
 
 // ---------- Lightbox ----------
-function openLightbox(src, website) {
-  document.getElementById('lightboxImg').src = src;
+let lightboxState = { photos: [], index: 0, website: null };
+
+function openLightbox(photos, index, website) {
+  lightboxState = { photos: photos || [], index: index || 0, website };
+  renderLightboxImage();
+  document.getElementById('lightboxOverlay').classList.remove('hidden');
+}
+
+function renderLightboxImage() {
+  const { photos, index, website } = lightboxState;
+  if (!photos.length) return;
+  document.getElementById('lightboxImg').src = photoUrl(photos[index]);
   const link = document.getElementById('lightboxWebsiteLink');
   if (website) {
     link.href = website;
@@ -1524,7 +1975,16 @@ function openLightbox(src, website) {
   } else {
     link.style.display = 'none';
   }
-  document.getElementById('lightboxOverlay').classList.remove('hidden');
+  const showNav = photos.length > 1;
+  document.getElementById('lightboxPrevBtn').style.display = showNav ? 'flex' : 'none';
+  document.getElementById('lightboxNextBtn').style.display = showNav ? 'flex' : 'none';
+}
+
+function navigateLightbox(delta) {
+  const { photos } = lightboxState;
+  if (photos.length < 2) return;
+  lightboxState.index = (lightboxState.index + delta + photos.length) % photos.length;
+  renderLightboxImage();
 }
 
 function closeLightbox() {
@@ -1705,6 +2165,7 @@ document.getElementById('leaderboardBtn').addEventListener('click', openLeaderbo
 document.getElementById('randomizerBtn').addEventListener('click', openRandomizer);
 document.getElementById('shopBtn').addEventListener('click', openShop);
 document.getElementById('moderatorBtn').addEventListener('click', openModerator);
+document.getElementById('gameBtn').addEventListener('click', openGame);
 
 document.getElementById('searchBox').addEventListener('input', (e) => {
   state.search = e.target.value;
@@ -1721,9 +2182,35 @@ document.getElementById('cuisineFilterSelect').addEventListener('change', (e) =>
   renderList();
 });
 
+document.getElementById('filtersToggleBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('filtersPanel').classList.toggle('hidden');
+});
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('filtersPanel');
+  if (!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target.id !== 'filtersToggleBtn') {
+    panel.classList.add('hidden');
+  }
+});
+
+document.getElementById('dailyRewardBubble').addEventListener('click', claimDailyReward);
+
 document.getElementById('lightboxCloseBtn').addEventListener('click', closeLightbox);
+document.getElementById('lightboxPrevBtn').addEventListener('click', () => navigateLightbox(-1));
+document.getElementById('lightboxNextBtn').addEventListener('click', () => navigateLightbox(1));
 document.getElementById('lightboxOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'lightboxOverlay') closeLightbox();
+});
+
+let lightboxTouchStartX = null;
+document.getElementById('lightboxImg').addEventListener('touchstart', (e) => {
+  lightboxTouchStartX = e.touches[0].clientX;
+});
+document.getElementById('lightboxImg').addEventListener('touchend', (e) => {
+  if (lightboxTouchStartX === null) return;
+  const dx = e.changedTouches[0].clientX - lightboxTouchStartX;
+  if (Math.abs(dx) > 50) navigateLightbox(dx < 0 ? 1 : -1);
+  lightboxTouchStartX = null;
 });
 
 document.getElementById('viewOverlay').addEventListener('click', (e) => {
@@ -1744,9 +2231,13 @@ document.getElementById('shopOverlay').addEventListener('click', (e) => {
 document.getElementById('moderatorOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'moderatorOverlay') closeModerator();
 });
+document.getElementById('gameOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'gameOverlay') closeGame();
+});
 
 populateCuisineFilterSelect();
 renderTabs();
 renderList();
+renderDailyRewardBubble();
 ensureSeeded().finally(subscribeToPlaces);
 subscribeToProfiles();
