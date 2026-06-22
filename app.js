@@ -71,6 +71,9 @@ function subscribeToPlaces() {
     places = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     firstSnapshotReceived = true;
     renderList();
+    if (!document.getElementById('leaderboardOverlay').classList.contains('hidden')) {
+      openLeaderboard();
+    }
   }, err => {
     document.getElementById('listContainer').innerHTML =
       `<div class="empty-state">Couldn't connect to the shared album. Check the Firebase setup in firebase-config.js, or your internet connection.</div>`;
