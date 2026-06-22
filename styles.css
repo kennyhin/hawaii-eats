@@ -1,9 +1,11 @@
 :root {
+  /* "Tropical jade sunrise" palette */
   --sand: #fdf6ec;
-  --ocean: #1c7c8c;
-  --ocean-dark: #145c68;
-  --coral: #ff6b5e;
-  --sunset: #ffb648;
+  --ocean: #23ced9;
+  --ocean-dark: #097c87;
+  --coral: #fca47c;
+  --sunset: #f9d779;
+  --sage: #a1cca6;
   --ink: #2c2a26;
   --card-bg: #ffffff;
   --border: #e7ddc9;
@@ -418,7 +420,7 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, var(--coral), #ff8a5c);
+  background: linear-gradient(135deg, var(--coral), var(--sunset));
   color: white;
   font-weight: 700;
   font-size: 13px;
@@ -645,7 +647,7 @@ main {
 }
 
 .star-filled {
-  color: #ffb648;
+  color: var(--sunset);
 }
 
 .memory-form {
@@ -818,7 +820,7 @@ form.place-form textarea {
 }
 
 .btn-lookup:hover {
-  background: var(--ocean);
+  background: var(--ocean-dark);
   color: white;
 }
 
@@ -840,7 +842,7 @@ form.place-form textarea {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, var(--coral), #ff8a5c);
+  background: linear-gradient(135deg, var(--coral), var(--sunset));
   color: white;
   font-weight: 700;
   font-size: 16px;

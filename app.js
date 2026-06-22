@@ -371,13 +371,15 @@ function activityText(item) {
       return `<strong>${escapeHtml(item.author)}</strong> 👍 liked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'dislike':
       return `<strong>${escapeHtml(item.author)}</strong> 👎 disliked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
+    case 'funny':
+      return `<strong>${escapeHtml(item.author)}</strong> 😂 found ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong> funny`;
     default:
       return '';
   }
 }
 
 function activityIcon(type) {
-  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎' }[type] || '•';
+  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂' }[type] || '•';
 }
 
 function renderActivityFeed() {
@@ -644,6 +646,7 @@ function openViewModal(id) {
             <div class="memory-reactions">
               <button type="button" class="reaction-btn ${reaction === 'like' ? 'reaction-active' : ''}" data-type="like" data-id="${m.id}">👍 ${m.likes || 0}</button>
               <button type="button" class="reaction-btn ${reaction === 'dislike' ? 'reaction-active' : ''}" data-type="dislike" data-id="${m.id}">👎 ${m.dislikes || 0}</button>
+              <button type="button" class="reaction-btn ${reaction === 'funny' ? 'reaction-active' : ''}" data-type="funny" data-id="${m.id}">😂 ${m.funny || 0}</button>
             </div>
           </div>
         `;
@@ -826,6 +829,8 @@ async function deleteMemory(placeId, memoryId) {
   }
 }
 
+const REACTION_COUNT_FIELD = { like: 'likes', dislike: 'dislikes', funny: 'funny' };
+
 async function toggleReaction(placeId, memoryId, type) {
   const place = places.find(p => p.id === placeId);
   if (!place) return;
@@ -834,13 +839,16 @@ async function toggleReaction(placeId, memoryId, type) {
 
   const updatedMemories = (place.memories || []).map(m => {
     if (m.id !== memoryId) return m;
-    let likes = m.likes || 0;
-    let dislikes = m.dislikes || 0;
-    if (current === 'like') likes -= 1;
-    if (current === 'dislike') dislikes -= 1;
-    if (next === 'like') likes += 1;
-    if (next === 'dislike') dislikes += 1;
-    const updated = { ...m, likes: Math.max(0, likes), dislikes: Math.max(0, dislikes) };
+    const counts = { likes: m.likes || 0, dislikes: m.dislikes || 0, funny: m.funny || 0 };
+    if (current) {
+      const field = REACTION_COUNT_FIELD[current];
+      counts[field] = Math.max(0, counts[field] - 1);
+    }
+    if (next) {
+      const field = REACTION_COUNT_FIELD[next];
+      counts[field] = counts[field] + 1;
+    }
+    const updated = { ...m, ...counts };
     if (next) {
       updated.lastReactionType = next;
       updated.lastReactionAuthor = getSavedAuthorName() || 'Someone';
