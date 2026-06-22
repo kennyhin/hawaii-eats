@@ -497,6 +497,15 @@ function computeRawPointsStats() {
     });
   });
 
+  Object.entries(profiles).forEach(([key, profile]) => {
+    const credits = profile.credits || [];
+    if (!credits.length) return;
+    const bonus = credits.reduce((sum, c) => sum + (c.points || 0), 0);
+    const s = ensure(profile.displayName || key);
+    s.points += bonus;
+    s.creditedPoints = bonus;
+  });
+
   return stats;
 }
 
@@ -558,7 +567,7 @@ function openLeaderboard() {
             <span class="leaderboard-rank">${medals[i] || (i + 1) + '.'}</span>
             <span class="leaderboard-avatar" style="background:${escapeHtml(avatarBg)};${avatarOutline}">${icon || escapeHtml((c.name[0] || '?').toUpperCase())}</span>
             <span class="leaderboard-name">${authorBadgeHtml(c.name)}</span>
-            <span class="leaderboard-stats">${c.points} pts<br>${c.placesAdded} place${c.placesAdded === 1 ? '' : 's'} · ${c.memoriesCount} memor${c.memoriesCount === 1 ? 'y' : 'ies'} · ${c.photosAdded} photo${c.photosAdded === 1 ? '' : 's'}</span>
+            <span class="leaderboard-stats">${c.points} pts<br>${c.placesAdded} place${c.placesAdded === 1 ? '' : 's'} · ${c.memoriesCount} memor${c.memoriesCount === 1 ? 'y' : 'ies'} · ${c.photosAdded} photo${c.photosAdded === 1 ? '' : 's'}${c.creditedPoints ? ` · 🛡️ ${c.creditedPoints > 0 ? '+' : ''}${c.creditedPoints} bonus` : ''}</span>
           </div>
         `;
         }).join('')}
@@ -749,6 +758,108 @@ async function equipItem(name, category, itemId) {
   }
 }
 
+// ---------- Moderator ----------
+// PIN is a soft speed-bump, not real auth — same trust model as the rest of
+// this no-login site (the URL itself is the access control).
+const MODERATOR_PIN = '8181';
+let moderatorUnlocked = false;
+
+function openModerator() {
+  if (moderatorUnlocked) {
+    renderModeratorAwardForm();
+  } else {
+    renderModeratorPinForm();
+  }
+  document.getElementById('moderatorOverlay').classList.remove('hidden');
+}
+
+function closeModerator() {
+  document.getElementById('moderatorOverlay').classList.add('hidden');
+}
+
+function renderModeratorPinForm() {
+  const modal = document.getElementById('moderatorModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="moderatorCloseBtn">✕</button>
+    <h2>🛡️ Moderator</h2>
+    <form class="place-form" id="moderatorPinFormEl">
+      <label for="moderatorPinInput">Enter the moderator PIN to award bonus credits</label>
+      <input type="password" id="moderatorPinInput" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off">
+      <p class="form-error" id="moderatorPinError" style="display:none; color:#c23b3b;">Incorrect PIN.</p>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">Unlock</button>
+      </div>
+    </form>
+  `;
+  document.getElementById('moderatorCloseBtn').addEventListener('click', closeModerator);
+  const pinInput = document.getElementById('moderatorPinInput');
+  document.getElementById('moderatorPinFormEl').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (pinInput.value === MODERATOR_PIN) {
+      moderatorUnlocked = true;
+      renderModeratorAwardForm();
+    } else {
+      document.getElementById('moderatorPinError').style.display = '';
+      pinInput.value = '';
+      pinInput.focus();
+    }
+  });
+  pinInput.focus();
+}
+
+function renderModeratorAwardForm(status) {
+  const modal = document.getElementById('moderatorModal');
+  const names = computeLeaderboard().map(c => c.name);
+  modal.innerHTML = `
+    <button class="modal-close" id="moderatorCloseBtn">✕</button>
+    <h2>🛡️ Award Credits</h2>
+    <p class="hint">Grants bonus leaderboard points to anyone, for anything — shows up in Recent Activity.</p>
+    <form class="place-form" id="moderatorAwardFormEl">
+      <label for="moderatorNameInput">Who gets credited?</label>
+      <input type="text" id="moderatorNameInput" list="moderatorNameList" placeholder="Name" required>
+      <datalist id="moderatorNameList">${names.map(n => `<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>
+
+      <label for="moderatorPointsInput">How many points?</label>
+      <input type="number" id="moderatorPointsInput" placeholder="e.g. 5" required>
+
+      <label for="moderatorReasonInput">What for?</label>
+      <input type="text" id="moderatorReasonInput" placeholder="e.g. adding photos all week" required>
+
+      ${status ? `<p class="hint">${status}</p>` : ''}
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">Award Credit</button>
+      </div>
+    </form>
+  `;
+  document.getElementById('moderatorCloseBtn').addEventListener('click', closeModerator);
+  document.getElementById('moderatorAwardFormEl').addEventListener('submit', (e) => {
+    e.preventDefault();
+    submitModeratorCredit();
+  });
+}
+
+async function submitModeratorCredit() {
+  const name = document.getElementById('moderatorNameInput').value.trim();
+  const points = Number(document.getElementById('moderatorPointsInput').value);
+  const reason = document.getElementById('moderatorReasonInput').value.trim();
+  if (!name || !points || !reason) return;
+
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+  const credits = [...(profile.credits || []), { points, reason, awardedAt: Date.now() }];
+  const updates = { displayName: name, credits };
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+    renderActivityFeed();
+    renderList();
+    renderModeratorAwardForm(`✅ Credited ${escapeHtml(name)} ${points > 0 ? '+' : ''}${points} pts for "${escapeHtml(reason)}".`);
+  } catch (err) {
+    console.error(err);
+    alert('Could not award credit — check your internet connection and try again.');
+  }
+}
+
 // ---------- Activity feed ----------
 function computeActivityFeed(limit = 8) {
   const events = [];
@@ -796,6 +907,18 @@ function computeActivityFeed(limit = 8) {
     });
   });
 
+  Object.values(profiles).forEach(profile => {
+    (profile.credits || []).forEach(credit => {
+      events.push({
+        type: 'moderator_credit',
+        timestamp: credit.awardedAt,
+        creditedName: profile.displayName,
+        points: credit.points,
+        reason: credit.reason,
+      });
+    });
+  });
+
   return events.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
 }
 
@@ -809,7 +932,8 @@ function timeAgo(ts) {
 }
 
 function pointsBadge(points) {
-  return `<span class="activity-points">+${points} pt${points === 1 ? '' : 's'}</span>`;
+  const sign = points < 0 ? '' : '+';
+  return `<span class="activity-points">${sign}${points} pt${Math.abs(points) === 1 ? '' : 's'}</span>`;
 }
 
 function activityText(item) {
@@ -827,13 +951,15 @@ function activityText(item) {
       return `${who} 👎 disliked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'funny':
       return `${who} 😂 found ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong> funny`;
+    case 'moderator_credit':
+      return `🛡️ Moderator credited ${authorBadgeHtml(item.creditedName)} ${pointsBadge(item.points)} for ${escapeHtml(item.reason)}`;
     default:
       return '';
   }
 }
 
 function activityIcon(type) {
-  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂' }[type] || '•';
+  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', moderator_credit: '🛡️' }[type] || '•';
 }
 
 function renderActivityFeed() {
@@ -846,14 +972,14 @@ function renderActivityFeed() {
   }
 
   list.innerHTML = feed.map(item => `
-    <div class="activity-item" data-place-id="${item.placeId}">
+    <div class="activity-item ${item.placeId ? '' : 'activity-item-static'}" ${item.placeId ? `data-place-id="${item.placeId}"` : ''}>
       <span class="activity-icon">${activityIcon(item.type)}</span>
       <span class="activity-text">${activityText(item)}</span>
       <span class="activity-time">${timeAgo(item.timestamp)}</span>
     </div>
   `).join('');
 
-  list.querySelectorAll('.activity-item').forEach(row => {
+  list.querySelectorAll('.activity-item[data-place-id]').forEach(row => {
     row.addEventListener('click', () => openViewModal(row.dataset.placeId));
   });
 }
@@ -1523,6 +1649,7 @@ document.getElementById('findWebsiteBtn').addEventListener('click', findWebsite)
 document.getElementById('leaderboardBtn').addEventListener('click', openLeaderboard);
 document.getElementById('randomizerBtn').addEventListener('click', openRandomizer);
 document.getElementById('shopBtn').addEventListener('click', openShop);
+document.getElementById('moderatorBtn').addEventListener('click', openModerator);
 
 document.getElementById('searchBox').addEventListener('input', (e) => {
   state.search = e.target.value;
@@ -1558,6 +1685,9 @@ document.getElementById('randomizerOverlay').addEventListener('click', (e) => {
 });
 document.getElementById('shopOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'shopOverlay') closeShop();
+});
+document.getElementById('moderatorOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'moderatorOverlay') closeModerator();
 });
 
 populateCuisineFilterSelect();

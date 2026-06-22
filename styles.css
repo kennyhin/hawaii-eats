@@ -180,6 +180,14 @@ main {
   transition: background 0.1s;
 }
 
+.activity-item-static {
+  cursor: default;
+}
+
+.activity-item-static:hover {
+  background: none;
+}
+
 .activity-item:hover {
   background: var(--sand);
 }
