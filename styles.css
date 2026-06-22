@@ -1165,6 +1165,8 @@ form.place-form textarea {
   background: var(--sand);
   border-radius: 12px;
   padding: 10px 14px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .leaderboard-rank {
@@ -1191,13 +1193,19 @@ form.place-form textarea {
   font-weight: 700;
   font-size: 16px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .leaderboard-stats {
   font-size: 13px;
   color: #6b6555;
   text-align: right;
-  white-space: nowrap;
+  white-space: normal;
+  flex-shrink: 0;
+  max-width: 42%;
 }
 
 footer {

@@ -79,7 +79,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622c') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622d') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
