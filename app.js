@@ -81,6 +81,7 @@ function subscribeToPlaces() {
     places = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     firstSnapshotReceived = true;
     renderList();
+    renderActivityFeed();
     if (!document.getElementById('leaderboardOverlay').classList.contains('hidden')) {
       openLeaderboard();
     }
@@ -293,6 +294,97 @@ function openLeaderboard() {
 
 function closeLeaderboard() {
   document.getElementById('leaderboardOverlay').classList.add('hidden');
+}
+
+// ---------- Activity feed ----------
+function computeActivityFeed(limit = 8) {
+  const events = [];
+
+  places.forEach(place => {
+    if (place.createdAt) {
+      events.push({
+        type: 'place_added',
+        timestamp: place.createdAt,
+        placeId: place.id,
+        placeName: place.name,
+        author: (place.addedBy || '').trim() || 'Someone',
+      });
+    }
+    (place.memories || []).forEach(m => {
+      if (m.createdAt) {
+        events.push({
+          type: 'memory_added',
+          timestamp: m.createdAt,
+          placeId: place.id,
+          placeName: place.name,
+          author: m.author,
+          rating: m.rating,
+        });
+      }
+      if (m.lastReactionAt) {
+        events.push({
+          type: m.lastReactionType,
+          timestamp: m.lastReactionAt,
+          placeId: place.id,
+          placeName: place.name,
+          author: m.lastReactionAuthor || 'Someone',
+          memoryAuthor: m.author,
+        });
+      }
+    });
+  });
+
+  return events.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+}
+
+function timeAgo(ts) {
+  const diffMin = Math.floor((Date.now() - ts) / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  return `${Math.floor(diffHr / 24)}d ago`;
+}
+
+function activityText(item) {
+  switch (item.type) {
+    case 'place_added':
+      return `<strong>${escapeHtml(item.author)}</strong> added <strong>${escapeHtml(item.placeName)}</strong>`;
+    case 'memory_added':
+      return `<strong>${escapeHtml(item.author)}</strong> left a ${item.rating}★ memory on <strong>${escapeHtml(item.placeName)}</strong>`;
+    case 'like':
+      return `<strong>${escapeHtml(item.author)}</strong> 👍 liked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
+    case 'dislike':
+      return `<strong>${escapeHtml(item.author)}</strong> 👎 disliked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
+    default:
+      return '';
+  }
+}
+
+function activityIcon(type) {
+  return { place_added: '🆕', memory_added: '📝', like: '👍', dislike: '👎' }[type] || '•';
+}
+
+function renderActivityFeed() {
+  const list = document.getElementById('activityList');
+  const feed = computeActivityFeed();
+
+  if (!feed.length) {
+    list.innerHTML = `<p class="no-memories">Nothing yet — add a place or leave a memory to start the feed!</p>`;
+    return;
+  }
+
+  list.innerHTML = feed.map(item => `
+    <div class="activity-item" data-place-id="${item.placeId}">
+      <span class="activity-icon">${activityIcon(item.type)}</span>
+      <span class="activity-text">${activityText(item)}</span>
+      <span class="activity-time">${timeAgo(item.timestamp)}</span>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.activity-item').forEach(row => {
+    row.addEventListener('click', () => openViewModal(row.dataset.placeId));
+  });
 }
 
 // ---------- Randomizer ----------
@@ -676,7 +768,7 @@ async function submitMemory(placeId, rating, color, editingId) {
       m.id === editingId ? { ...m, author, rating, text, color: chosenColor } : m
     );
   } else {
-    const newMemory = { id: uid(), author, rating, text, color: chosenColor };
+    const newMemory = { id: uid(), author, rating, text, color: chosenColor, createdAt: Date.now() };
     updatedMemories = [...(place.memories || []), newMemory];
   }
 
@@ -727,7 +819,13 @@ async function toggleReaction(placeId, memoryId, type) {
     if (current === 'dislike') dislikes -= 1;
     if (next === 'like') likes += 1;
     if (next === 'dislike') dislikes += 1;
-    return { ...m, likes: Math.max(0, likes), dislikes: Math.max(0, dislikes) };
+    const updated = { ...m, likes: Math.max(0, likes), dislikes: Math.max(0, dislikes) };
+    if (next) {
+      updated.lastReactionType = next;
+      updated.lastReactionAuthor = getSavedAuthorName() || 'Someone';
+      updated.lastReactionAt = Date.now();
+    }
+    return updated;
   });
 
   try {
@@ -826,6 +924,7 @@ async function handleFormSubmit(e) {
   };
 
   if (isNewPlace) {
+    data.createdAt = Date.now();
     const author = document.getElementById('fAuthor').value.trim();
     if (author) {
       data.addedBy = author;

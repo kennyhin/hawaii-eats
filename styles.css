@@ -137,6 +137,68 @@ main {
   margin: -6px 0 16px;
 }
 
+.activity-feed {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.activity-feed h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: var(--ocean-dark);
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.activity-item:hover {
+  background: var(--sand);
+}
+
+.activity-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.activity-text {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.activity-text strong {
+  font-weight: 700;
+}
+
+.activity-time {
+  font-size: 12px;
+  color: #9a9484;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.activity-feed .no-memories {
+  margin: 0;
+}
+
 .letter-section {
   margin-bottom: 28px;
 }
