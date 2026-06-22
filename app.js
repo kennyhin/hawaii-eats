@@ -10,6 +10,9 @@ const PROFILES_COLLECTION = 'profiles';
 const ICON_COST = 10;
 const COLOR_COST = 25;
 const SKIN_COST = 40;
+const OUTLINE_STYLE_COST = 10;
+const OUTLINE_COLOR_COST = 25;
+const DEFAULT_OUTLINE_COLOR = '#097c87';
 
 const SHOP_ICONS = [
   { id: 'icon_soccer', emoji: '⚽', label: 'Soccer', cost: ICON_COST },
@@ -72,8 +75,40 @@ function skinBackgroundCss(skin) {
   return `${wash}, ${skin.css}`;
 }
 
-const SHOP_CATALOG = { icon: SHOP_ICONS, color: SHOP_COLORS, skin: SHOP_SKINS };
-const EQUIP_FIELD = { icon: 'equippedIcon', color: 'equippedColor', skin: 'equippedSkin' };
+// Outline color deliberately excludes gold — that's reserved for the #1
+// leaderboard medal so it stays a unique signal you can't just buy.
+const SHOP_OUTLINE_STYLES = [
+  { id: 'outline_solid', label: 'Solid', cost: OUTLINE_STYLE_COST, borderStyle: 'solid', width: '3px' },
+  { id: 'outline_dotted', label: 'Dotted', cost: OUTLINE_STYLE_COST, borderStyle: 'dotted', width: '3px' },
+  { id: 'outline_dashed', label: 'Dashed', cost: OUTLINE_STYLE_COST, borderStyle: 'dashed', width: '3px' },
+  { id: 'outline_bold', label: 'Bold', cost: OUTLINE_STYLE_COST, borderStyle: 'solid', width: '6px' },
+];
+
+const SHOP_OUTLINE_COLORS = [
+  { id: 'outlinecolor_hotpink', label: 'Hot Pink', cost: OUTLINE_COLOR_COST, hex: '#e0298f' },
+  { id: 'outlinecolor_electricblue', label: 'Electric Blue', cost: OUTLINE_COLOR_COST, hex: '#1e6fff' },
+  { id: 'outlinecolor_emerald', label: 'Emerald', cost: OUTLINE_COLOR_COST, hex: '#0f9a5e' },
+  { id: 'outlinecolor_lavender', label: 'Lavender', cost: OUTLINE_COLOR_COST, hex: '#8c6fd4' },
+  { id: 'outlinecolor_coral', label: 'Coral', cost: OUTLINE_COLOR_COST, hex: '#fc6f4d' },
+  { id: 'outlinecolor_slate', label: 'Slate', cost: OUTLINE_COLOR_COST, hex: '#4a5568' },
+];
+
+function bubbleOutlineCss(styleId, colorId) {
+  if (!styleId && !colorId) return '';
+  const styleItem = SHOP_OUTLINE_STYLES.find(s => s.id === styleId) || SHOP_OUTLINE_STYLES[0];
+  const colorItem = colorId ? SHOP_OUTLINE_COLORS.find(c => c.id === colorId) : null;
+  const hex = colorItem ? colorItem.hex : DEFAULT_OUTLINE_COLOR;
+  return `border: ${styleItem.width} ${styleItem.borderStyle} ${hex};`;
+}
+
+const SHOP_CATALOG = {
+  icon: SHOP_ICONS, color: SHOP_COLORS, skin: SHOP_SKINS,
+  outlineStyle: SHOP_OUTLINE_STYLES, outlineColor: SHOP_OUTLINE_COLORS,
+};
+const EQUIP_FIELD = {
+  icon: 'equippedIcon', color: 'equippedColor', skin: 'equippedSkin',
+  outlineStyle: 'equippedOutlineStyle', outlineColor: 'equippedOutlineColor',
+};
 const COUNTRIES = ['Hawaii', 'Japan'];
 // left,top,right,bottom (lon/lat) per Nominatim viewbox format
 const COUNTRY_VIEWBOX = {
@@ -304,11 +339,19 @@ function placeThumb(place) {
   return CATEGORY_DEFAULT_EMOJI[place.category || 'eats'];
 }
 
+function creditBadgeHtml(name) {
+  if (!name) return '';
+  const profile = getProfile(name);
+  const icon = profile?.equippedIcon ? SHOP_ICONS.find(i => i.id === profile.equippedIcon)?.emoji : '';
+  return `<span class="credit-badge" title="Added by ${escapeHtml(name)}">${icon ? icon + ' ' : '👤 '}${escapeHtml(name)}</span>`;
+}
+
 function placeCardHtml(p, rank) {
   const avg = averageRating(p.memories);
   return `
     <div class="place-card" data-id="${p.id}">
       ${rank ? `<div class="rank-badge">#${rank}</div>` : ''}
+      ${p.addedBy ? creditBadgeHtml(p.addedBy) : ''}
       <div class="place-thumb">${placeThumb(p)}</div>
       <div class="place-info">
         <h3>${escapeHtml(p.name)} ${avg ? `<span class="card-rating">★ ${avg}</span>` : ''}</h3>
@@ -509,10 +552,11 @@ function openLeaderboard() {
           const icon = profile?.equippedIcon ? SHOP_ICONS.find(s => s.id === profile.equippedIcon)?.emoji : null;
           const colorItem = profile?.equippedColor ? SHOP_COLORS.find(s => s.id === profile.equippedColor) : null;
           const avatarBg = colorItem ? colorItem.hex : c.color;
+          const avatarOutline = bubbleOutlineCss(profile?.equippedOutlineStyle, profile?.equippedOutlineColor);
           return `
           <div class="leaderboard-row" style="${rowBg}">
             <span class="leaderboard-rank">${medals[i] || (i + 1) + '.'}</span>
-            <span class="leaderboard-avatar" style="background:${escapeHtml(avatarBg)}">${icon || escapeHtml((c.name[0] || '?').toUpperCase())}</span>
+            <span class="leaderboard-avatar" style="background:${escapeHtml(avatarBg)};${avatarOutline}">${icon || escapeHtml((c.name[0] || '?').toUpperCase())}</span>
             <span class="leaderboard-name">${authorBadgeHtml(c.name)}</span>
             <span class="leaderboard-stats">${c.points} pts<br>${c.placesAdded} place${c.placesAdded === 1 ? '' : 's'} · ${c.memoriesCount} memor${c.memoriesCount === 1 ? 'y' : 'ies'} · ${c.photosAdded} photo${c.photosAdded === 1 ? '' : 's'}</span>
           </div>
@@ -532,7 +576,9 @@ function closeLeaderboard() {
 function shopItemPreview(category, item) {
   if (category === 'icon') return `<span class="shop-preview shop-preview-icon" data-category="${category}" data-id="${item.id}">${item.emoji}</span>`;
   if (category === 'color') return `<span class="shop-preview shop-preview-color" data-category="${category}" data-id="${item.id}" style="background:${item.hex}"></span>`;
-  return `<span class="shop-preview shop-preview-skin" data-category="${category}" data-id="${item.id}" style="background:${skinBackgroundCss(item)}"></span>`;
+  if (category === 'skin') return `<span class="shop-preview shop-preview-skin" data-category="${category}" data-id="${item.id}" style="background:${skinBackgroundCss(item)}"></span>`;
+  if (category === 'outlineStyle') return `<span class="shop-preview shop-preview-outline" data-category="${category}" data-id="${item.id}" style="border: ${item.width} ${item.borderStyle} ${DEFAULT_OUTLINE_COLOR};"></span>`;
+  return `<span class="shop-preview shop-preview-color" data-category="${category}" data-id="${item.id}" style="background:${item.hex}"></span>`;
 }
 
 function shopItemLabel(category, item) {
@@ -548,15 +594,18 @@ function renderShopPreviewBubble(profile) {
   const iconId = shopPreviewOverride.icon !== undefined ? shopPreviewOverride.icon : profile?.equippedIcon;
   const colorId = shopPreviewOverride.color !== undefined ? shopPreviewOverride.color : profile?.equippedColor;
   const skinId = shopPreviewOverride.skin !== undefined ? shopPreviewOverride.skin : profile?.equippedSkin;
+  const outlineStyleId = shopPreviewOverride.outlineStyle !== undefined ? shopPreviewOverride.outlineStyle : profile?.equippedOutlineStyle;
+  const outlineColorId = shopPreviewOverride.outlineColor !== undefined ? shopPreviewOverride.outlineColor : profile?.equippedOutlineColor;
 
   const icon = iconId ? SHOP_ICONS.find(i => i.id === iconId)?.emoji : '';
   const colorItem = colorId ? SHOP_COLORS.find(c => c.id === colorId) : null;
   const skin = skinId ? SHOP_SKINS.find(s => s.id === skinId) : null;
   const bg = skin ? skinBackgroundCss(skin) : BUBBLE_COLORS[0];
   const nameStyle = colorItem ? ` style="color:${colorItem.hex}"` : '';
+  const outline = bubbleOutlineCss(outlineStyleId, outlineColorId);
   const isPreviewing = Object.keys(shopPreviewOverride).length > 0;
   return `
-    <div class="memory-bubble shop-live-preview" style="background:${bg}">
+    <div class="memory-bubble shop-live-preview" style="background:${bg};${outline}">
       <div class="memory-card-top">
         <span class="memory-author"><span class="author-badge"${nameStyle}>${icon ? icon + ' ' : ''}You</span></span>
         ${renderStarsDisplay(5)}
@@ -582,13 +631,15 @@ function openShop() {
     { category: 'icon', title: '⚽ Icons', items: SHOP_ICONS },
     { category: 'color', title: '🎨 Name Colors', items: SHOP_COLORS },
     { category: 'skin', title: '✨ Memory Skins', items: SHOP_SKINS },
+    { category: 'outlineStyle', title: '🔲 Outline Style', items: SHOP_OUTLINE_STYLES },
+    { category: 'outlineColor', title: '🖌️ Outline Color', items: SHOP_OUTLINE_COLORS },
   ];
 
   const modal = document.getElementById('shopModal');
   modal.innerHTML = `
     <button class="modal-close" id="shopCloseBtn">✕</button>
     <h2>🛍️ Shop</h2>
-    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Memory skins ${SKIN_COST} pts</p>
+    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Memory skins ${SKIN_COST} pts · Outline style ${OUTLINE_STYLE_COST} pts · Outline color ${OUTLINE_COLOR_COST} pts</p>
 
     <div class="shop-name-field">
       <label>Who are you?</label>
@@ -859,6 +910,7 @@ function renderPhotoGalleryItems(place) {
   return place.photos.map((photo, i) => `
     <div class="photo-wrap">
       <img src="${photoUrl(photo)}" alt="" data-idx="${i}">
+      ${photoAuthor(photo) ? creditBadgeHtml(photoAuthor(photo)) : ''}
       <button type="button" class="photo-delete-btn" data-idx="${i}" title="Delete photo">✕</button>
     </div>
   `).join('');
@@ -1037,11 +1089,12 @@ function openViewModal(id) {
         ${memories.length ? memories.map(m => {
           const isTop = topContributor && (m.author || '').trim() === topContributor;
           const reaction = getReaction(m.id);
-          const equippedSkinId = getProfile(m.author)?.equippedSkin;
-          const skin = SHOP_SKINS.find(s => s.id === equippedSkinId);
+          const authorProfile = getProfile(m.author);
+          const skin = authorProfile?.equippedSkin ? SHOP_SKINS.find(s => s.id === authorProfile.equippedSkin) : null;
           const bubbleBg = skin ? skinBackgroundCss(skin) : (m.color || BUBBLE_COLORS[0]);
+          const bubbleOutline = bubbleOutlineCss(authorProfile?.equippedOutlineStyle, authorProfile?.equippedOutlineColor);
           return `
-          <div class="memory-bubble ${isTop ? 'memory-bubble-top' : ''}" style="background:${bubbleBg}">
+          <div class="memory-bubble ${isTop ? 'memory-bubble-top' : ''}" style="background:${bubbleBg};${bubbleOutline}">
             <div class="memory-card-top">
               <span class="memory-author">${authorBadgeHtml(m.author)} ${isTop ? '<span class="top-badge">🥇 #1</span>' : ''}</span>
               <div class="memory-actions">

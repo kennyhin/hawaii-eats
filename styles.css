@@ -279,6 +279,32 @@ main {
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
+.credit-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--coral);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 1;
+}
+
+.photo-gallery .credit-badge {
+  top: 4px;
+  right: 4px;
+  left: 4px;
+  max-width: none;
+  text-align: center;
+}
+
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1027,6 +1053,10 @@ form.place-form textarea {
 
 .shop-preview-color {
   border-color: transparent;
+}
+
+.shop-preview-outline {
+  background: white;
 }
 
 .shop-preview-none {
