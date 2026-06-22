@@ -1,4 +1,7 @@
 // Seed data parsed from the family's Hawaii eats list.
+// Bump this whenever SEED_PLACES changes so browsers with cached
+// localStorage data pick up the update instead of staying stale.
+const SEED_VERSION = 2;
 const SEED_PLACES = [
   {
     "id": "hi-1",

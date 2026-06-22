@@ -18,12 +18,39 @@ let state = {
   sort: 'az',
 };
 
+const SEED_VERSION_KEY = 'food_memory_album_seed_version';
+
 function loadPlaces() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) {
-    try { return JSON.parse(raw); } catch (e) { /* fall through to seed */ }
+  const storedVersion = Number(localStorage.getItem(SEED_VERSION_KEY) || 0);
+
+  if (!raw) {
+    localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION));
+    return SEED_PLACES.slice();
   }
-  return SEED_PLACES.slice();
+
+  let stored;
+  try { stored = JSON.parse(raw); } catch (e) { stored = null; }
+  if (!stored) {
+    localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION));
+    return SEED_PLACES.slice();
+  }
+
+  if (storedVersion < SEED_VERSION) {
+    const seedById = Object.fromEntries(SEED_PLACES.map(p => [p.id, p]));
+    const merged = stored.map(p => {
+      const fresh = seedById[p.id];
+      if (!fresh) return p;
+      return { ...fresh, photos: p.photos && p.photos.length ? p.photos : fresh.photos };
+    });
+    const storedIds = new Set(stored.map(p => p.id));
+    SEED_PLACES.forEach(p => { if (!storedIds.has(p.id)) merged.push(p); });
+    localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION));
+    savePlaces(merged);
+    return merged;
+  }
+
+  return stored;
 }
 
 function savePlaces(places) {
