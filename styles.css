@@ -342,12 +342,11 @@ main {
   margin: 0 0 12px;
 }
 
-.memory-card {
-  background: white;
-  border-radius: 10px;
+.memory-bubble {
+  border-radius: 16px 16px 16px 4px;
   padding: 12px 14px;
   margin-bottom: 10px;
-  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 
 .memory-card-top {
@@ -427,6 +426,30 @@ main {
 
 .star-pick:hover {
   transform: scale(1.15);
+}
+
+.color-input {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: transform 0.1s;
+  display: inline-block;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.color-selected {
+  border-color: var(--ink);
 }
 
 .memory-form .btn {

@@ -28,6 +28,11 @@ let places = [];
 let firstSnapshotReceived = false;
 
 const AUTHOR_NAME_KEY = 'food_memory_album_author_name';
+const AUTHOR_COLOR_KEY = 'food_memory_album_author_color';
+const BUBBLE_COLORS = [
+  '#FFB3A7', '#AEE3F0', '#FFE08A', '#B6EFC9', '#D8C6F0',
+  '#FFC2E2', '#C7D2FE', '#FFD7B5', '#B7F0E0', '#F0E0C0',
+];
 
 function getSavedAuthorName() {
   return localStorage.getItem(AUTHOR_NAME_KEY) || '';
@@ -35,6 +40,14 @@ function getSavedAuthorName() {
 
 function saveAuthorName(name) {
   localStorage.setItem(AUTHOR_NAME_KEY, name);
+}
+
+function getSavedAuthorColor() {
+  return localStorage.getItem(AUTHOR_COLOR_KEY) || BUBBLE_COLORS[0];
+}
+
+function saveAuthorColor(color) {
+  localStorage.setItem(AUTHOR_COLOR_KEY, color);
 }
 
 function uid() {
@@ -234,7 +247,7 @@ function openViewModal(id) {
       </div>
 
       ${memories.length ? memories.map(m => `
-        <div class="memory-card">
+        <div class="memory-bubble" style="background:${escapeHtml(m.color || BUBBLE_COLORS[0])}">
           <div class="memory-card-top">
             <span class="memory-author">${escapeHtml(m.author)}</span>
             ${renderStarsDisplay(m.rating)}
@@ -246,6 +259,11 @@ function openViewModal(id) {
       <div class="memory-form">
         <label>Who are you?</label>
         <input type="text" id="memoryAuthorInput" placeholder="Your name" value="${escapeHtml(getSavedAuthorName())}">
+
+        <label>Pick your color</label>
+        <div class="color-input" id="memoryColorInput">
+          ${BUBBLE_COLORS.map(c => `<span class="color-swatch ${c === getSavedAuthorColor() ? 'color-selected' : ''}" data-value="${c}" style="background:${c}"></span>`).join('')}
+        </div>
 
         <label>Your rating</label>
         <div class="star-input" id="memoryStarInput">
@@ -285,8 +303,19 @@ function openViewModal(id) {
     });
   });
 
+  let selectedColor = getSavedAuthorColor();
+  const colorInput = document.getElementById('memoryColorInput');
+  colorInput.querySelectorAll('.color-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      selectedColor = swatch.dataset.value;
+      colorInput.querySelectorAll('.color-swatch').forEach(s => {
+        s.classList.toggle('color-selected', s.dataset.value === selectedColor);
+      });
+    });
+  });
+
   document.getElementById('postMemoryBtn').addEventListener('click', () => {
-    submitMemory(place.id, selectedRating);
+    submitMemory(place.id, selectedRating, selectedColor);
   });
 
   document.getElementById('viewCloseBtn').addEventListener('click', closeViewModal);
@@ -298,7 +327,7 @@ function openViewModal(id) {
   document.getElementById('viewOverlay').classList.remove('hidden');
 }
 
-async function submitMemory(placeId, rating) {
+async function submitMemory(placeId, rating, color) {
   const authorInput = document.getElementById('memoryAuthorInput');
   const textInput = document.getElementById('memoryTextInput');
   const author = authorInput.value.trim();
@@ -316,7 +345,7 @@ async function submitMemory(placeId, rating) {
   const place = places.find(p => p.id === placeId);
   if (!place) return;
 
-  const newMemory = { id: uid(), author, rating, text };
+  const newMemory = { id: uid(), author, rating, text, color: color || BUBBLE_COLORS[0] };
   const updatedMemories = [...(place.memories || []), newMemory];
 
   const postBtn = document.getElementById('postMemoryBtn');
@@ -326,6 +355,7 @@ async function submitMemory(placeId, rating) {
   try {
     await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
     saveAuthorName(author);
+    saveAuthorColor(newMemory.color);
     place.memories = updatedMemories;
     openViewModal(placeId);
   } catch (err) {
