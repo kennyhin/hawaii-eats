@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622f') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622g') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1003,12 +1003,12 @@ async function claimDailyReward() {
 }
 
 // ---------- Tennis mini-game ----------
-// Short best-of-3 games, first to 3 points wins a game. Entry fee is deducted
-// up front (like a Shop purchase); a match win credits the prize on top, a
-// loss just keeps the entry fee gone — no extra penalty.
+// Best of 3 matches — first point wins a match, first to win 2 matches wins
+// the series. Entry fee is deducted up front (like a Shop purchase); winning
+// the series credits the prize on top, losing just keeps the entry fee gone.
 const GAME_ENTRY_COST = 10;
 const GAME_WIN_POINTS = 20;
-const ROUND_WIN_SCORE = 3;
+const ROUND_WIN_SCORE = 1;
 const MATCH_WINS_NEEDED = 2;
 
 let gameState = null;
@@ -1023,14 +1023,14 @@ function openGame() {
   modal.innerHTML = `
     <button class="modal-close" id="gameCloseBtn">✕</button>
     <h2>🎾 Tennis</h2>
-    <p class="hint">Short best-of-3 match (first to ${ROUND_WIN_SCORE} wins a game). Entry costs ${GAME_ENTRY_COST} pts. Win the match for +${GAME_WIN_POINTS} pts — lose, and your entry fee is gone. Drag your finger (or mouse) up and down on the court to move your racket.</p>
+    <p class="hint">Best of 3 — first point wins a match, first to win 2 matches takes the series. Entry costs ${GAME_ENTRY_COST} pts. Win the series for +${GAME_WIN_POINTS} pts — lose, and your entry fee is gone. Drag your finger (or mouse) up and down on the court to move your racket.</p>
     <div class="shop-name-field">
       <label>Who's playing?</label>
       <input type="text" id="gameNameInput" placeholder="Your name" value="${escapeHtml(name)}">
     </div>
     ${name ? `<p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>` : `<p class="hint">Type your name above to play.</p>`}
     <div class="modal-actions">
-      <button type="button" class="btn btn-primary" id="gameStartBtn" ${(!name || available < GAME_ENTRY_COST) ? 'disabled' : ''}>🎾 Start Match (-${GAME_ENTRY_COST} pts)</button>
+      <button type="button" class="btn btn-primary" id="gameStartBtn" ${(!name || available < GAME_ENTRY_COST) ? 'disabled' : ''}>🎾 Start Series (-${GAME_ENTRY_COST} pts)</button>
     </div>
   `;
   document.getElementById('gameCloseBtn').addEventListener('click', closeGame);
@@ -1047,7 +1047,7 @@ function openGame() {
 
 function closeGame() {
   if (gameState && gameState.running) {
-    if (!confirm('Leave the match? Your progress (and entry fee) will be lost.')) return;
+    if (!confirm('Leave the series? Your progress (and entry fee) will be lost.')) return;
   }
   stopGameLoop();
   document.getElementById('gameOverlay').classList.add('hidden');
@@ -1086,10 +1086,10 @@ function renderGameCanvas(name) {
   const modal = document.getElementById('gameModal');
   modal.innerHTML = `
     <button class="modal-close" id="gameCloseBtn">✕</button>
-    <h2 id="tennisGameTitle">🎾 Tennis — Game 1</h2>
+    <h2 id="tennisGameTitle">🎾 Tennis — Match 1</h2>
     <div class="tennis-scoreboard">
       <span id="tennisPlayerScore">You: 0</span>
-      <span id="tennisMatchScore">Match: 0 – 0</span>
+      <span id="tennisMatchScore">Series: 0 – 0</span>
       <span id="tennisCpuScore">CPU: 0</span>
     </div>
     <canvas id="tennisCanvas" width="600" height="360"></canvas>
@@ -1217,8 +1217,8 @@ function endGameRound() {
   g.playerScore = 0;
   g.cpuScore = 0;
   resetBall(g, Math.random() < 0.5 ? 1 : -1);
-  document.getElementById('tennisGameTitle').textContent = `🎾 Tennis — Game ${g.gameNum}`;
-  document.getElementById('tennisMatchScore').textContent = `Match: ${g.roundsWonPlayer} – ${g.roundsWonCpu}`;
+  document.getElementById('tennisGameTitle').textContent = `🎾 Tennis — Match ${g.gameNum}`;
+  document.getElementById('tennisMatchScore').textContent = `Series: ${g.roundsWonPlayer} – ${g.roundsWonCpu}`;
   gameAnimId = requestAnimationFrame(gameLoop);
 }
 
@@ -1230,7 +1230,7 @@ async function endGameMatch(playerWon) {
   const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
 
   if (playerWon) {
-    const credits = [...(profile.credits || []), { points: GAME_WIN_POINTS, reason: 'won a Tennis match', source: 'game', awardedAt: Date.now() }];
+    const credits = [...(profile.credits || []), { points: GAME_WIN_POINTS, reason: 'won a Tennis series', source: 'game', awardedAt: Date.now() }];
     const updates = { displayName: name, credits };
     try {
       await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
@@ -1248,7 +1248,7 @@ async function endGameMatch(playerWon) {
     <button class="modal-close" id="gameCloseBtn">✕</button>
     <div class="randomizer-result">
       <div class="randomizer-dice">${playerWon ? '🏆' : '😢'}</div>
-      <h2>${playerWon ? 'You won the match!' : 'You lost the match.'}</h2>
+      <h2>${playerWon ? 'You won the series!' : 'You lost the series.'}</h2>
       <p class="hint">${playerWon ? `+${GAME_WIN_POINTS} pts awarded!` : `Your ${GAME_ENTRY_COST} pt entry fee is gone — better luck next time!`}</p>
     </div>
     <div class="modal-actions">
