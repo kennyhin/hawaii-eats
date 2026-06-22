@@ -1,8 +1,9 @@
-# Setting up shared photos (Firebase)
+# Setting up shared photos
 
-The site now stores all places and photos in Firebase so everyone in the
-family sees the same data and photos from any device. You need to create
-one free Firebase project and paste its config in. Takes about 5 minutes.
+The site stores place data in Firebase Firestore and photos on ImgBB —
+both free, neither requires a credit card. (Firebase's own photo storage,
+Cloud Storage, now requires upgrading to a paid plan, so we use ImgBB
+instead for photos.) Takes about 10 minutes total.
 
 ## 1. Create the Firebase project
 
@@ -33,27 +34,7 @@ one free Firebase project and paste its config in. Takes about 5 minutes.
    there's no login system, so treat the link itself as the access control
    (don't post it publicly). Click **Publish**.
 
-## 3. Turn on Storage (the photos)
-
-1. In the left sidebar, click **Build -> Storage**.
-2. Click **Get started**, accept the defaults.
-3. Go to the **Rules** tab and replace the contents with:
-
-   ```
-   rules_version = '2';
-   service firebase.storage {
-     match /b/{bucket}/o {
-       match /photos/{allPaths=**} {
-         allow read: if true;
-         allow write: if true;
-       }
-     }
-   }
-   ```
-
-   Click **Publish**.
-
-## 4. Get your web config
+## 3. Get your Firebase web config
 
 1. Click the gear icon -> **Project settings**.
 2. Scroll to **Your apps**, click the **</>** (web) icon to register a new app.
@@ -62,11 +43,18 @@ one free Firebase project and paste its config in. Takes about 5 minutes.
    [firebase-config.js](firebase-config.js) in this repo, replacing the
    `PASTE_YOUR_...` placeholders.
 
+## 4. Set up ImgBB (free photo hosting, no card)
+
+1. Go to https://imgbb.com and create a free account.
+2. While logged in, go to https://api.imgbb.com/.
+3. Copy the API key shown there into [imgbb-config.js](imgbb-config.js),
+   replacing `PASTE_YOUR_IMGBB_API_KEY`.
+
 ## 5. Push it
 
 ```
-git add firebase-config.js
-git commit -m "Add Firebase config"
+git add firebase-config.js imgbb-config.js
+git commit -m "Add Firebase and ImgBB config"
 git push
 ```
 

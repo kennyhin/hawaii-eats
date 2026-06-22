@@ -1,10 +1,8 @@
-import { db, storage } from './firebase.js';
+import { db } from './firebase.js';
 import {
   collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-import {
-  ref, uploadBytes, getDownloadURL,
-} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
+import { IMGBB_API_KEY } from './imgbb-config.js';
 
 const PLACES_COLLECTION = 'places';
 const COUNTRIES = ['Hawaii', 'Japan'];
@@ -290,11 +288,22 @@ function renderPhotoPreview() {
   });
 }
 
+async function uploadToImgbb(file) {
+  const formData = new FormData();
+  formData.append('image', file);
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+    method: 'POST',
+    body: formData,
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error?.message || 'Upload failed');
+  return json.data.url;
+}
+
 async function handlePhotoInput(e) {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
 
-  const placeId = document.getElementById('placeId').value;
   const photoBtn = document.getElementById('photoTriggerBtn');
   const originalLabel = photoBtn.textContent;
   photoBtn.disabled = true;
@@ -302,10 +311,7 @@ async function handlePhotoInput(e) {
   try {
     for (const file of files) {
       photoBtn.textContent = `📸 Uploading…`;
-      const path = `photos/${placeId}/${Date.now()}-${file.name}`;
-      const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const url = await uploadToImgbb(file);
       pendingPhotos.push(url);
       renderPhotoPreview();
     }
