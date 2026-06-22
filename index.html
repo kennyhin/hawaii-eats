@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260621a">
+<link rel="stylesheet" href="styles.css?v=20260621b">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 </head>
 <body>
@@ -28,6 +28,7 @@
       <option value="za">Sort Z → A</option>
     </select>
     <button class="btn btn-secondary" id="leaderboardBtn">🏆 Leaderboard</button>
+    <button class="btn btn-secondary" id="randomizerBtn">🎲 Randomize</button>
     <button class="btn btn-primary" id="addPlaceBtn">+ Add a Place</button>
   </div>
   <div class="count-line" id="countLine"></div>
@@ -82,6 +83,11 @@
   <div class="modal" id="leaderboardModal"></div>
 </div>
 
+<!-- Randomizer Modal -->
+<div class="overlay hidden" id="randomizerOverlay">
+  <div class="modal" id="randomizerModal"></div>
+</div>
+
 <!-- Lightbox -->
 <div class="overlay hidden" id="lightboxOverlay">
   <button class="modal-close" id="lightboxCloseBtn" style="position:fixed; top:20px; right:20px;">✕</button>
@@ -93,7 +99,7 @@
 
 <!-- Bump the ?v= on these whenever app.js/styles.css/hawaii_seed.js change, so
      everyone's browser fetches the new version instead of a stale cached copy. -->
-<script src="hawaii_seed.js?v=20260621a"></script>
-<script type="module" src="app.js?v=20260621a"></script>
+<script src="hawaii_seed.js?v=20260621b"></script>
+<script type="module" src="app.js?v=20260621b"></script>
 </body>
 </html>

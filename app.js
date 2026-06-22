@@ -269,6 +269,49 @@ function closeLeaderboard() {
   document.getElementById('leaderboardOverlay').classList.add('hidden');
 }
 
+// ---------- Randomizer ----------
+function openRandomizer() {
+  const pool = getFilteredSorted();
+  if (!pool.length) {
+    alert('No places match your current search/filter — clear it and try again!');
+    return;
+  }
+  renderRandomizerPick(pool);
+  document.getElementById('randomizerOverlay').classList.remove('hidden');
+}
+
+function renderRandomizerPick(pool) {
+  const place = pool[Math.floor(Math.random() * pool.length)];
+  const avg = averageRating(place.memories);
+  const modal = document.getElementById('randomizerModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="randomizerCloseBtn">✕</button>
+    <div class="randomizer-result">
+      <div class="randomizer-dice">🎲</div>
+      <p class="randomizer-tagline">Tonight's pick is...</p>
+      ${place.photos && place.photos.length ? `<img class="randomizer-photo" src="${place.photos[0]}" alt="">` : ''}
+      <h2>${escapeHtml(place.name)}</h2>
+      ${place.cuisine ? `<span class="cuisine-badge">${escapeHtml(place.cuisine)}</span>` : ''}
+      ${avg ? `<div class="card-rating">★ ${avg}</div>` : ''}
+      ${place.location ? `<p class="randomizer-location">📍 ${escapeHtml(place.location)}</p>` : ''}
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="randomizerSpinBtn">🎲 Spin Again</button>
+      <button type="button" class="btn btn-secondary" id="randomizerViewBtn">View Details</button>
+    </div>
+  `;
+  document.getElementById('randomizerCloseBtn').addEventListener('click', closeRandomizer);
+  document.getElementById('randomizerSpinBtn').addEventListener('click', () => renderRandomizerPick(pool));
+  document.getElementById('randomizerViewBtn').addEventListener('click', () => {
+    closeRandomizer();
+    openViewModal(place.id);
+  });
+}
+
+function closeRandomizer() {
+  document.getElementById('randomizerOverlay').classList.add('hidden');
+}
+
 // ---------- View modal ----------
 function renderPhotoGalleryItems(place) {
   return (place.photos || []).map((src, i) => `
@@ -766,6 +809,7 @@ document.getElementById('findAddressBtn').addEventListener('click', findAddress)
 document.getElementById('findWebsiteBtn').addEventListener('click', findWebsite);
 
 document.getElementById('leaderboardBtn').addEventListener('click', openLeaderboard);
+document.getElementById('randomizerBtn').addEventListener('click', openRandomizer);
 
 document.getElementById('searchBox').addEventListener('input', (e) => {
   state.search = e.target.value;
@@ -795,6 +839,9 @@ document.getElementById('formOverlay').addEventListener('click', (e) => {
 });
 document.getElementById('leaderboardOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'leaderboardOverlay') closeLeaderboard();
+});
+document.getElementById('randomizerOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'randomizerOverlay') closeRandomizer();
 });
 
 populateCuisineFilter();
