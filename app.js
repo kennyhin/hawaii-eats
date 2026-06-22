@@ -355,14 +355,18 @@ function timeAgo(ts) {
   return `${Math.floor(diffHr / 24)}d ago`;
 }
 
+function pointsBadge(points) {
+  return `<span class="activity-points">+${points} pt${points === 1 ? '' : 's'}</span>`;
+}
+
 function activityText(item) {
   switch (item.type) {
     case 'place_added':
-      return `<strong>${escapeHtml(item.author)}</strong> added <strong>${escapeHtml(item.placeName)}</strong>`;
+      return `<strong>${escapeHtml(item.author)}</strong> added <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(2)}`;
     case 'photo_added':
       return `<strong>${escapeHtml(item.author)}</strong> added a photo to <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'memory_added':
-      return `<strong>${escapeHtml(item.author)}</strong> left a ${item.rating}★ memory on <strong>${escapeHtml(item.placeName)}</strong>`;
+      return `<strong>${escapeHtml(item.author)}</strong> left a ${item.rating}★ memory on <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(1)}`;
     case 'like':
       return `<strong>${escapeHtml(item.author)}</strong> 👍 liked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'dislike':

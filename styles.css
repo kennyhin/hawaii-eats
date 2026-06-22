@@ -188,6 +188,19 @@ main {
   font-weight: 700;
 }
 
+.activity-points {
+  display: inline-flex;
+  background: var(--sunset);
+  color: white;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-left: 4px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 .activity-time {
   font-size: 12px;
   color: #9a9484;
