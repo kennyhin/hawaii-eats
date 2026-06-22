@@ -405,6 +405,16 @@ main {
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
+@keyframes photoPop {
+  0% { box-shadow: 0 0 0 0 rgba(255, 182, 72, 0.9); }
+  100% { box-shadow: 0 0 0 8px rgba(255, 182, 72, 0); }
+}
+
+.photo-just-added {
+  animation: photoPop 0.8s ease-out;
+  border-radius: 10px;
+}
+
 .lightbox-stack {
   display: flex;
   flex-direction: column;
@@ -520,6 +530,34 @@ main {
   margin: 4px 0 0;
   font-size: 15px;
   line-height: 1.45;
+}
+
+.memory-reactions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.reaction-btn {
+  background: rgba(255,255,255,0.6);
+  border: none;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--ink);
+  transition: transform 0.1s;
+}
+
+.reaction-btn:hover {
+  background: white;
+  transform: translateY(-1px);
+}
+
+.reaction-btn.reaction-active {
+  background: white;
+  box-shadow: 0 0 0 2px var(--ocean);
 }
 
 .star-row {
@@ -781,6 +819,12 @@ form.place-form textarea {
   max-width: 90vw;
   max-height: 80vh;
   border-radius: 10px;
+}
+
+.leaderboard-legend {
+  font-size: 13px;
+  color: #8a8473;
+  margin: 0;
 }
 
 .leaderboard-list {

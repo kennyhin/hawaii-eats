@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260621c">
+<link rel="stylesheet" href="styles.css?v=20260621d">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 </head>
 <body>
@@ -49,6 +49,11 @@
     <h2 id="formTitle">Add a Place</h2>
     <form class="place-form" id="placeForm">
       <input type="hidden" id="placeId">
+
+      <div id="fAuthorField">
+        <label for="fAuthor">Who's adding this? (+2 pts on the leaderboard)</label>
+        <input type="text" id="fAuthor" placeholder="Your name">
+      </div>
 
       <label for="fName">What's the name of the place?</label>
       <input type="text" id="fName" required>
@@ -99,7 +104,7 @@
 
 <!-- Bump the ?v= on these whenever app.js/styles.css/hawaii_seed.js change, so
      everyone's browser fetches the new version instead of a stale cached copy. -->
-<script src="hawaii_seed.js?v=20260621c"></script>
-<script type="module" src="app.js?v=20260621c"></script>
+<script src="hawaii_seed.js?v=20260621d"></script>
+<script type="module" src="app.js?v=20260621d"></script>
 </body>
 </html>

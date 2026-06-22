@@ -51,6 +51,16 @@ function saveAuthorColor(color) {
   localStorage.setItem(AUTHOR_COLOR_KEY, color);
 }
 
+function getReaction(memoryId) {
+  return localStorage.getItem('food_memory_album_reaction_' + memoryId) || null;
+}
+
+function saveReaction(memoryId, reaction) {
+  const key = 'food_memory_album_reaction_' + memoryId;
+  if (reaction) localStorage.setItem(key, reaction);
+  else localStorage.removeItem(key);
+}
+
 function uid() {
   return 'p-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 }
@@ -225,21 +235,36 @@ function populateCuisineFilter() {
 }
 
 // ---------- Leaderboard ----------
+// Scoring: +2 points for adding a new place, +1 point for posting a memory (rating).
+// Likes/dislikes on memories do NOT affect points.
 function computeLeaderboard() {
-  const counts = {};
+  const stats = {};
+  function ensure(name, color) {
+    if (!stats[name]) stats[name] = { name, points: 0, placesAdded: 0, memoriesCount: 0, ratingSum: 0, color: color || BUBBLE_COLORS[0] };
+    return stats[name];
+  }
+
   places.forEach(place => {
+    const addedBy = (place.addedBy || '').trim();
+    if (addedBy) {
+      const s = ensure(addedBy);
+      s.placesAdded += 1;
+      s.points += 2;
+    }
     (place.memories || []).forEach(m => {
       const key = (m.author || '').trim();
       if (!key) return;
-      if (!counts[key]) counts[key] = { name: key, count: 0, ratingSum: 0, color: m.color || BUBBLE_COLORS[0] };
-      counts[key].count += 1;
-      counts[key].ratingSum += (m.rating || 0);
-      counts[key].color = m.color || counts[key].color;
+      const s = ensure(key, m.color);
+      s.memoriesCount += 1;
+      s.points += 1;
+      s.ratingSum += (m.rating || 0);
+      s.color = m.color || s.color;
     });
   });
-  return Object.values(counts)
-    .map(c => ({ ...c, avg: (c.ratingSum / c.count).toFixed(1) }))
-    .sort((a, b) => b.count - a.count || b.avg - a.avg);
+
+  return Object.values(stats)
+    .map(s => ({ ...s, avg: s.memoriesCount ? (s.ratingSum / s.memoriesCount).toFixed(1) : null }))
+    .sort((a, b) => b.points - a.points || b.memoriesCount - a.memoriesCount);
 }
 
 function openLeaderboard() {
@@ -249,6 +274,7 @@ function openLeaderboard() {
   modal.innerHTML = `
     <button class="modal-close" id="leaderboardCloseBtn">✕</button>
     <h2>🏆 Top Contributors</h2>
+    <p class="leaderboard-legend">+2 pts for adding a place · +1 pt for each memory you post</p>
     ${data.length ? `
       <div class="leaderboard-list">
         ${data.map((c, i) => `
@@ -256,10 +282,10 @@ function openLeaderboard() {
             <span class="leaderboard-rank">${medals[i] || (i + 1) + '.'}</span>
             <span class="leaderboard-avatar" style="background:${escapeHtml(c.color)}">${escapeHtml((c.name[0] || '?').toUpperCase())}</span>
             <span class="leaderboard-name">${escapeHtml(c.name)}</span>
-            <span class="leaderboard-stats">${c.count} memor${c.count === 1 ? 'y' : 'ies'}<br>★ ${c.avg} avg given</span>
+            <span class="leaderboard-stats">${c.points} pts<br>${c.placesAdded} place${c.placesAdded === 1 ? '' : 's'} · ${c.memoriesCount} memor${c.memoriesCount === 1 ? 'y' : 'ies'}</span>
           </div>
         `).join('')}
-      </div>` : `<p class="no-memories">No memories yet — add one to get on the board!</p>`}
+      </div>` : `<p class="no-memories">No points yet — add a place or post a memory to get on the board!</p>`}
   `;
   document.getElementById('leaderboardCloseBtn').addEventListener('click', closeLeaderboard);
   document.getElementById('leaderboardOverlay').classList.remove('hidden');
@@ -398,8 +424,9 @@ async function handlePhotoUpload(e, placeId) {
   const originalLabel = btn.textContent;
   btn.disabled = true;
   const place = places.find(p => p.id === placeId);
-  if (!place) return;
+  if (!place) { e.target.value = ''; btn.disabled = false; return; }
 
+  let uploadedCount = 0;
   try {
     for (const file of files) {
       btn.textContent = '⏳ Uploading…';
@@ -409,14 +436,34 @@ async function handlePhotoUpload(e, placeId) {
       await setDoc(doc(db, PLACES_COLLECTION, placeId), { photos: place.photos }, { merge: true });
       document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
       wireGalleryHandlers(place);
+      uploadedCount += 1;
+      flashLastPhoto();
     }
   } catch (err) {
     console.error(err);
     alert('Photo upload failed — check your internet connection and try again.');
   } finally {
-    btn.disabled = false;
-    btn.textContent = originalLabel;
     e.target.value = '';
+  }
+
+  if (uploadedCount > 0) {
+    btn.textContent = uploadedCount > 1 ? `✓ ${uploadedCount} Added!` : '✓ Added!';
+    setTimeout(() => {
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+    }, 1600);
+  } else {
+    btn.textContent = originalLabel;
+    btn.disabled = false;
+  }
+}
+
+function flashLastPhoto() {
+  const wraps = document.querySelectorAll('#photoGallery .photo-wrap');
+  const last = wraps[wraps.length - 1];
+  if (last) {
+    last.classList.add('photo-just-added');
+    last.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'end' });
   }
 }
 
@@ -469,6 +516,7 @@ function openViewModal(id) {
       <div id="memoryList">
         ${memories.length ? memories.map(m => {
           const isTop = topContributor && (m.author || '').trim() === topContributor;
+          const reaction = getReaction(m.id);
           return `
           <div class="memory-bubble ${isTop ? 'memory-bubble-top' : ''}" style="background:${escapeHtml(m.color || BUBBLE_COLORS[0])}">
             <div class="memory-card-top">
@@ -480,6 +528,10 @@ function openViewModal(id) {
               </div>
             </div>
             ${m.text ? `<p class="memory-text">${escapeHtml(m.text)}</p>` : ''}
+            <div class="memory-reactions">
+              <button type="button" class="reaction-btn ${reaction === 'like' ? 'reaction-active' : ''}" data-type="like" data-id="${m.id}">👍 ${m.likes || 0}</button>
+              <button type="button" class="reaction-btn ${reaction === 'dislike' ? 'reaction-active' : ''}" data-type="dislike" data-id="${m.id}">👎 ${m.dislikes || 0}</button>
+            </div>
           </div>
         `;
         }).join('') : `<p class="no-memories">No memories yet — be the first!</p>`}
@@ -580,6 +632,9 @@ function openViewModal(id) {
   modal.querySelectorAll('.memory-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => deleteMemory(place.id, btn.dataset.id));
   });
+  modal.querySelectorAll('.reaction-btn').forEach(btn => {
+    btn.addEventListener('click', () => toggleReaction(place.id, btn.dataset.id, btn.dataset.type));
+  });
 
   document.getElementById('cancelEditBtn').addEventListener('click', resetMemoryForm);
 
@@ -658,6 +713,34 @@ async function deleteMemory(placeId, memoryId) {
   }
 }
 
+async function toggleReaction(placeId, memoryId, type) {
+  const place = places.find(p => p.id === placeId);
+  if (!place) return;
+  const current = getReaction(memoryId);
+  const next = current === type ? null : type;
+
+  const updatedMemories = (place.memories || []).map(m => {
+    if (m.id !== memoryId) return m;
+    let likes = m.likes || 0;
+    let dislikes = m.dislikes || 0;
+    if (current === 'like') likes -= 1;
+    if (current === 'dislike') dislikes -= 1;
+    if (next === 'like') likes += 1;
+    if (next === 'dislike') dislikes += 1;
+    return { ...m, likes: Math.max(0, likes), dislikes: Math.max(0, dislikes) };
+  });
+
+  try {
+    await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
+    saveReaction(memoryId, next);
+    place.memories = updatedMemories;
+    openViewModal(placeId);
+  } catch (err) {
+    console.error(err);
+    alert('Could not save your reaction — check your internet connection and try again.');
+  }
+}
+
 function closeViewModal() {
   document.getElementById('viewOverlay').classList.add('hidden');
 }
@@ -699,6 +782,14 @@ function openFormModal(id) {
   document.getElementById('addressHint').textContent = '';
   document.getElementById('deletePlaceBtn').style.display = place ? 'inline-block' : 'none';
 
+  const authorField = document.getElementById('fAuthorField');
+  if (place) {
+    authorField.style.display = 'none';
+  } else {
+    authorField.style.display = '';
+    document.getElementById('fAuthor').value = getSavedAuthorName();
+  }
+
   document.getElementById('formOverlay').classList.remove('hidden');
 }
 
@@ -724,6 +815,8 @@ async function handleFormSubmit(e) {
   const name = document.getElementById('fName').value.trim();
   if (!name) return;
 
+  const isNewPlace = !places.find(p => p.id === id);
+
   const data = {
     name,
     country: state.activeTab,
@@ -731,6 +824,14 @@ async function handleFormSubmit(e) {
     location: document.getElementById('fLocation').value.trim(),
     website: document.getElementById('fWebsite').value.trim(),
   };
+
+  if (isNewPlace) {
+    const author = document.getElementById('fAuthor').value.trim();
+    if (author) {
+      data.addedBy = author;
+      saveAuthorName(author);
+    }
+  }
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const originalLabel = submitBtn.textContent;
