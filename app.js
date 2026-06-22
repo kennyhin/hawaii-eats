@@ -64,13 +64,17 @@ const SHOP_SKINS = [
   { id: 'skin_eleven', label: 'Eleven', cost: SKIN_COST, overlay: 0.2, image: 'skins/11_skin.png' },
   { id: 'skin_rose', label: 'Rose', cost: SKIN_COST, overlay: 0.2, image: 'skins/rose_skin.png' },
   { id: 'skin_purple_daisies', label: 'Purple Daisies', cost: SKIN_COST, overlay: 0.35, image: 'skins/flower_skin.png' },
+  { id: 'skin_hibiscus', label: 'Hibiscus', cost: SKIN_COST, overlay: 0.15, image: 'skins/Hibiscus_flower.png' },
+  { id: 'skin_starlord', label: 'Star-Lord', cost: SKIN_COST, overlay: 0.35, image: 'skins/Starlord_skin.png' },
+  { id: 'skin_minecraft', label: 'Minecraft Blocks', cost: SKIN_COST, overlay: 0.25, image: 'skins/minecraft_skin.png' },
+  { id: 'skin_minecraft_crew', label: 'Minecraft Crew', cost: SKIN_COST, overlay: 0.3, image: 'skins/minecraft2_skin.png' },
 ];
 
 function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260621n') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622b') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -807,12 +811,16 @@ function renderModeratorPinForm() {
   pinInput.focus();
 }
 
-function renderModeratorAwardForm(status) {
+const SITE_ANNOUNCEMENTS_DOC_ID = '_announcements';
+
+function renderModeratorAwardForm(creditStatus, updateStatus) {
   const modal = document.getElementById('moderatorModal');
   const names = computeLeaderboard().map(c => c.name);
   modal.innerHTML = `
     <button class="modal-close" id="moderatorCloseBtn">✕</button>
-    <h2>🛡️ Award Credits</h2>
+    <h2>🛡️ Moderator Tools</h2>
+
+    <h3 class="shop-section-title">Award Credits</h3>
     <p class="hint">Grants bonus leaderboard points to anyone, for anything — shows up in Recent Activity.</p>
     <form class="place-form" id="moderatorAwardFormEl">
       <label for="moderatorNameInput">Who gets credited?</label>
@@ -825,9 +833,20 @@ function renderModeratorAwardForm(status) {
       <label for="moderatorReasonInput">What for?</label>
       <input type="text" id="moderatorReasonInput" placeholder="e.g. adding photos all week" required>
 
-      ${status ? `<p class="hint">${status}</p>` : ''}
+      ${creditStatus ? `<p class="hint">${creditStatus}</p>` : ''}
       <div class="modal-actions">
         <button type="submit" class="btn btn-primary">Award Credit</button>
+      </div>
+    </form>
+
+    <h3 class="shop-section-title">Post a Site Update</h3>
+    <p class="hint">Posts an announcement at the top of Recent Activity for everyone.</p>
+    <form class="place-form" id="moderatorUpdateFormEl">
+      <label for="moderatorUpdateInput">What's new?</label>
+      <input type="text" id="moderatorUpdateInput" placeholder="e.g. Added the Hikes section!" required>
+      ${updateStatus ? `<p class="hint">${updateStatus}</p>` : ''}
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">Post Update</button>
       </div>
     </form>
   `;
@@ -835,6 +854,10 @@ function renderModeratorAwardForm(status) {
   document.getElementById('moderatorAwardFormEl').addEventListener('submit', (e) => {
     e.preventDefault();
     submitModeratorCredit();
+  });
+  document.getElementById('moderatorUpdateFormEl').addEventListener('submit', (e) => {
+    e.preventDefault();
+    submitSiteUpdate();
   });
 }
 
@@ -853,10 +876,27 @@ async function submitModeratorCredit() {
     profiles[key] = { ...profile, ...updates };
     renderActivityFeed();
     renderList();
-    renderModeratorAwardForm(`✅ Credited ${escapeHtml(name)} ${points > 0 ? '+' : ''}${points} pts for "${escapeHtml(reason)}".`);
+    renderModeratorAwardForm(`✅ Credited ${escapeHtml(name)} ${points > 0 ? '+' : ''}${points} pts for "${escapeHtml(reason)}".`, null);
   } catch (err) {
     console.error(err);
     alert('Could not award credit — check your internet connection and try again.');
+  }
+}
+
+async function submitSiteUpdate() {
+  const text = document.getElementById('moderatorUpdateInput').value.trim();
+  if (!text) return;
+
+  const existing = profiles[SITE_ANNOUNCEMENTS_DOC_ID] || { messages: [] };
+  const messages = [...(existing.messages || []), { text, postedAt: Date.now() }];
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, SITE_ANNOUNCEMENTS_DOC_ID), { messages }, { merge: true });
+    profiles[SITE_ANNOUNCEMENTS_DOC_ID] = { ...existing, messages };
+    renderActivityFeed();
+    renderModeratorAwardForm(null, `✅ Posted: "${escapeHtml(text)}"`);
+  } catch (err) {
+    console.error(err);
+    alert('Could not post the update — check your internet connection and try again.');
   }
 }
 
@@ -919,6 +959,14 @@ function computeActivityFeed(limit = 8) {
     });
   });
 
+  (profiles[SITE_ANNOUNCEMENTS_DOC_ID]?.messages || []).forEach(msg => {
+    events.push({
+      type: 'site_update',
+      timestamp: msg.postedAt,
+      message: msg.text,
+    });
+  });
+
   return events.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
 }
 
@@ -952,14 +1000,16 @@ function activityText(item) {
     case 'funny':
       return `${who} 😂 found ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong> funny`;
     case 'moderator_credit':
-      return `🛡️ Moderator credited ${authorBadgeHtml(item.creditedName)} ${pointsBadge(item.points)} for ${escapeHtml(item.reason)}`;
+      return `Moderator credited ${authorBadgeHtml(item.creditedName)} ${pointsBadge(item.points)} for ${escapeHtml(item.reason)}`;
+    case 'site_update':
+      return `<strong>New Update:</strong> ${escapeHtml(item.message)}`;
     default:
       return '';
   }
 }
 
 function activityIcon(type) {
-  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', moderator_credit: '🛡️' }[type] || '•';
+  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', moderator_credit: '🛡️', site_update: '📢' }[type] || '•';
 }
 
 function renderActivityFeed() {
