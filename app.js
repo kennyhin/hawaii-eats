@@ -22,6 +22,7 @@ let state = {
   activeTab: 'Hawaii',
   search: '',
   sort: 'az',
+  cuisineFilter: 'all',
 };
 
 let places = [];
@@ -98,6 +99,10 @@ function renderTabs() {
 function getFilteredSorted() {
   let list = places.filter(p => p.country === state.activeTab);
 
+  if (state.cuisineFilter !== 'all') {
+    list = list.filter(p => p.cuisine === state.cuisineFilter);
+  }
+
   if (state.search.trim()) {
     const q = state.search.trim().toLowerCase();
     list = list.filter(p =>
@@ -161,17 +166,20 @@ function renderList() {
     <section class="letter-section">
       <div class="letter-heading">${letter}</div>
       <div class="grid">
-        ${groups[letter].map(p => `
+        ${groups[letter].map(p => {
+          const avg = averageRating(p.memories);
+          return `
           <div class="place-card" data-id="${p.id}">
             <div class="place-thumb">${placeThumb(p)}</div>
             <div class="place-info">
-              <h3>${escapeHtml(p.name)}</h3>
+              <h3>${escapeHtml(p.name)} ${avg ? `<span class="card-rating">★ ${avg}</span>` : ''}</h3>
               ${p.cuisine ? `<span class="cuisine-badge">${escapeHtml(p.cuisine)}</span>` : ''}
               ${p.notes ? `<div class="meta"><span class="meta-label">Notes:</span> ${escapeHtml(truncate(p.notes, 60))}</div>` : ''}
             </div>
             ${p.photos && p.photos.length ? `<div class="photo-badge">📷 ${p.photos.length}</div>` : ''}
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     </section>
   `).join('');
@@ -206,7 +214,164 @@ function averageRating(memories) {
   return (sum / memories.length).toFixed(1);
 }
 
+// ---------- Cuisine filter ----------
+function populateCuisineFilter() {
+  const select = document.getElementById('cuisineFilterSelect');
+  select.innerHTML = `<option value="all">All Cuisines</option>` +
+    CUISINES.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+}
+
+// ---------- Leaderboard ----------
+function computeLeaderboard() {
+  const counts = {};
+  places.forEach(place => {
+    (place.memories || []).forEach(m => {
+      const key = (m.author || '').trim();
+      if (!key) return;
+      if (!counts[key]) counts[key] = { name: key, count: 0, ratingSum: 0, color: m.color || BUBBLE_COLORS[0] };
+      counts[key].count += 1;
+      counts[key].ratingSum += (m.rating || 0);
+      counts[key].color = m.color || counts[key].color;
+    });
+  });
+  return Object.values(counts)
+    .map(c => ({ ...c, avg: (c.ratingSum / c.count).toFixed(1) }))
+    .sort((a, b) => b.count - a.count || b.avg - a.avg);
+}
+
+function openLeaderboard() {
+  const data = computeLeaderboard();
+  const medals = ['🥇', '🥈', '🥉'];
+  const modal = document.getElementById('leaderboardModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="leaderboardCloseBtn">✕</button>
+    <h2>🏆 Top Contributors</h2>
+    ${data.length ? `
+      <div class="leaderboard-list">
+        ${data.map((c, i) => `
+          <div class="leaderboard-row">
+            <span class="leaderboard-rank">${medals[i] || (i + 1) + '.'}</span>
+            <span class="leaderboard-avatar" style="background:${escapeHtml(c.color)}">${escapeHtml((c.name[0] || '?').toUpperCase())}</span>
+            <span class="leaderboard-name">${escapeHtml(c.name)}</span>
+            <span class="leaderboard-stats">${c.count} memor${c.count === 1 ? 'y' : 'ies'}<br>★ ${c.avg} avg given</span>
+          </div>
+        `).join('')}
+      </div>` : `<p class="no-memories">No memories yet — add one to get on the board!</p>`}
+  `;
+  document.getElementById('leaderboardCloseBtn').addEventListener('click', closeLeaderboard);
+  document.getElementById('leaderboardOverlay').classList.remove('hidden');
+}
+
+function closeLeaderboard() {
+  document.getElementById('leaderboardOverlay').classList.add('hidden');
+}
+
 // ---------- View modal ----------
+function renderPhotoGalleryItems(place) {
+  return (place.photos || []).map((src, i) => `
+    <div class="photo-wrap">
+      <img src="${src}" alt="" data-idx="${i}">
+      <button type="button" class="photo-delete-btn" data-idx="${i}" title="Delete photo">✕</button>
+    </div>
+  `).join('');
+}
+
+function wireGalleryHandlers(place) {
+  const wrapper = document.getElementById('photoFieldWrapper');
+  const gallery = document.getElementById('photoGallery');
+  gallery.querySelectorAll('img').forEach(img => {
+    img.addEventListener('click', () => openLightbox(img.src, place.website));
+  });
+  gallery.querySelectorAll('.photo-delete-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deletePhoto(place.id, Number(btn.dataset.idx));
+    });
+  });
+  wrapper.style.display = (place.photos && place.photos.length) ? '' : 'none';
+}
+
+async function deletePhoto(placeId, idx) {
+  if (!confirm('Delete this photo?')) return;
+  const place = places.find(p => p.id === placeId);
+  if (!place) return;
+  const updated = (place.photos || []).filter((_, i) => i !== idx);
+  try {
+    await setDoc(doc(db, PLACES_COLLECTION, placeId), { photos: updated }, { merge: true });
+    place.photos = updated;
+    document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
+    wireGalleryHandlers(place);
+  } catch (err) {
+    console.error(err);
+    alert('Could not delete photo — check your internet connection and try again.');
+  }
+}
+
+async function compressImage(file, maxDim = 1280, quality = 0.72) {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+
+  let { width, height } = img;
+  if (width > maxDim || height > maxDim) {
+    if (width > height) {
+      height = Math.round(height * maxDim / width);
+      width = maxDim;
+    } else {
+      width = Math.round(width * maxDim / height);
+      height = maxDim;
+    }
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+  if (!blob) return file;
+  return new File([blob], (file.name || 'photo').replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
+}
+
+async function handleMemoryPhotoUpload(e, placeId) {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+
+  const btn = document.getElementById('addMemoryPhotoBtn');
+  btn.disabled = true;
+  const place = places.find(p => p.id === placeId);
+  if (!place) return;
+
+  try {
+    for (const file of files) {
+      btn.textContent = '⏳';
+      const compressed = await compressImage(file);
+      const url = await uploadToImgbb(compressed);
+      place.photos = [...(place.photos || []), url];
+      await setDoc(doc(db, PLACES_COLLECTION, placeId), { photos: place.photos }, { merge: true });
+      document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
+      wireGalleryHandlers(place);
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Photo upload failed — check your internet connection and try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📸';
+    e.target.value = '';
+  }
+}
+
 function openViewModal(id) {
   const place = places.find(p => p.id === id);
   if (!place) return;
@@ -232,13 +397,10 @@ function openViewModal(id) {
         <a href="${escapeHtml(place.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(place.website)}</a>
       </div>` : ''}
 
-    ${place.photos && place.photos.length ? `
-      <div class="field">
-        <label>Photos</label>
-        <div class="photo-gallery">
-          ${place.photos.map(src => `<img src="${src}" alt="">`).join('')}
-        </div>
-      </div>` : ''}
+    <div class="field" id="photoFieldWrapper" style="${place.photos && place.photos.length ? '' : 'display:none;'}">
+      <label>Photos</label>
+      <div class="photo-gallery" id="photoGallery">${renderPhotoGalleryItems(place)}</div>
+    </div>
 
     <div class="memories-section">
       <div class="memories-heading">
@@ -246,15 +408,21 @@ function openViewModal(id) {
         ${avg ? `<span class="memories-avg">${renderStarsDisplay(Math.round(avg))} ${avg} (${memories.length})</span>` : ''}
       </div>
 
-      ${memories.length ? memories.map(m => `
-        <div class="memory-bubble" style="background:${escapeHtml(m.color || BUBBLE_COLORS[0])}">
-          <div class="memory-card-top">
-            <span class="memory-author">${escapeHtml(m.author)}</span>
-            ${renderStarsDisplay(m.rating)}
+      <div id="memoryList">
+        ${memories.length ? memories.map(m => `
+          <div class="memory-bubble" style="background:${escapeHtml(m.color || BUBBLE_COLORS[0])}">
+            <div class="memory-card-top">
+              <span class="memory-author">${escapeHtml(m.author)}</span>
+              <div class="memory-actions">
+                ${renderStarsDisplay(m.rating)}
+                <button type="button" class="memory-icon-btn memory-edit-btn" data-id="${m.id}" title="Edit">✎</button>
+                <button type="button" class="memory-icon-btn memory-delete-btn" data-id="${m.id}" title="Delete">✕</button>
+              </div>
+            </div>
+            ${m.text ? `<p class="memory-text">${escapeHtml(m.text)}</p>` : ''}
           </div>
-          ${m.text ? `<p class="memory-text">${escapeHtml(m.text)}</p>` : ''}
-        </div>
-      `).join('') : `<p class="no-memories">No memories yet — be the first!</p>`}
+        `).join('') : `<p class="no-memories">No memories yet — be the first!</p>`}
+      </div>
 
       <div class="memory-form">
         <label>Who are you?</label>
@@ -273,7 +441,12 @@ function openViewModal(id) {
         <label>Your memory</label>
         <textarea id="memoryTextInput" placeholder="What did you think?"></textarea>
 
-        <button type="button" class="btn btn-primary" id="postMemoryBtn">+ Add Your Memory</button>
+        <div class="memory-form-actions">
+          <input type="file" id="memoryPhotoInput" accept="image/*" multiple class="visually-hidden">
+          <button type="button" class="btn-photo-small" id="addMemoryPhotoBtn" title="Add a photo">📸</button>
+          <button type="button" class="btn btn-primary" id="postMemoryBtn">+ Add Your Memory</button>
+          <button type="button" class="cancel-edit-btn" id="cancelEditBtn" style="display:none;">Cancel edit</button>
+        </div>
       </div>
     </div>
 
@@ -288,34 +461,71 @@ function openViewModal(id) {
     </div>
   `;
 
-  modal.querySelectorAll('.photo-gallery img').forEach(img => {
-    img.addEventListener('click', () => openLightbox(img.src));
-  });
+  wireGalleryHandlers(place);
 
-  let selectedRating = 0;
+  document.getElementById('addMemoryPhotoBtn').addEventListener('click', () => {
+    document.getElementById('memoryPhotoInput').click();
+  });
+  document.getElementById('memoryPhotoInput').addEventListener('change', (e) => handleMemoryPhotoUpload(e, place.id));
+
+  const formState = { rating: 0, color: getSavedAuthorColor(), editingId: null };
+
   const starInput = document.getElementById('memoryStarInput');
-  starInput.querySelectorAll('.star-pick').forEach(star => {
-    star.addEventListener('click', () => {
-      selectedRating = Number(star.dataset.value);
-      starInput.querySelectorAll('.star-pick').forEach(s => {
-        s.classList.toggle('star-filled', Number(s.dataset.value) <= selectedRating);
-      });
+  function setStarUI(rating) {
+    formState.rating = rating;
+    starInput.querySelectorAll('.star-pick').forEach(s => {
+      s.classList.toggle('star-filled', Number(s.dataset.value) <= rating);
     });
+  }
+  starInput.querySelectorAll('.star-pick').forEach(star => {
+    star.addEventListener('click', () => setStarUI(Number(star.dataset.value)));
   });
 
-  let selectedColor = getSavedAuthorColor();
   const colorInput = document.getElementById('memoryColorInput');
-  colorInput.querySelectorAll('.color-swatch').forEach(swatch => {
-    swatch.addEventListener('click', () => {
-      selectedColor = swatch.dataset.value;
-      colorInput.querySelectorAll('.color-swatch').forEach(s => {
-        s.classList.toggle('color-selected', s.dataset.value === selectedColor);
-      });
+  function setColorUI(color) {
+    formState.color = color;
+    colorInput.querySelectorAll('.color-swatch').forEach(s => {
+      s.classList.toggle('color-selected', s.dataset.value === color);
     });
+  }
+  colorInput.querySelectorAll('.color-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => setColorUI(swatch.dataset.value));
   });
+
+  function resetMemoryForm() {
+    formState.editingId = null;
+    document.getElementById('memoryAuthorInput').value = getSavedAuthorName();
+    document.getElementById('memoryTextInput').value = '';
+    setStarUI(0);
+    setColorUI(getSavedAuthorColor());
+    document.getElementById('postMemoryBtn').textContent = '+ Add Your Memory';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+  }
+
+  function startEditMemory(memoryId) {
+    const memory = (place.memories || []).find(m => m.id === memoryId);
+    if (!memory) return;
+    formState.editingId = memoryId;
+    document.getElementById('memoryAuthorInput').value = memory.author;
+    document.getElementById('memoryTextInput').value = memory.text || '';
+    setStarUI(memory.rating);
+    setColorUI(memory.color || BUBBLE_COLORS[0]);
+    document.getElementById('postMemoryBtn').textContent = '💾 Save Changes';
+    document.getElementById('cancelEditBtn').style.display = 'inline-block';
+    document.getElementById('memoryAuthorInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  modal.querySelectorAll('.memory-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => startEditMemory(btn.dataset.id));
+  });
+  modal.querySelectorAll('.memory-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => deleteMemory(place.id, btn.dataset.id));
+  });
+
+  document.getElementById('cancelEditBtn').addEventListener('click', resetMemoryForm);
 
   document.getElementById('postMemoryBtn').addEventListener('click', () => {
-    submitMemory(place.id, selectedRating, selectedColor);
+    submitMemory(place.id, formState.rating, formState.color, formState.editingId);
   });
 
   document.getElementById('viewCloseBtn').addEventListener('click', closeViewModal);
@@ -327,7 +537,7 @@ function openViewModal(id) {
   document.getElementById('viewOverlay').classList.remove('hidden');
 }
 
-async function submitMemory(placeId, rating, color) {
+async function submitMemory(placeId, rating, color, editingId) {
   const authorInput = document.getElementById('memoryAuthorInput');
   const textInput = document.getElementById('memoryTextInput');
   const author = authorInput.value.trim();
@@ -345,24 +555,47 @@ async function submitMemory(placeId, rating, color) {
   const place = places.find(p => p.id === placeId);
   if (!place) return;
 
-  const newMemory = { id: uid(), author, rating, text, color: color || BUBBLE_COLORS[0] };
-  const updatedMemories = [...(place.memories || []), newMemory];
+  const chosenColor = color || BUBBLE_COLORS[0];
+  let updatedMemories;
+  if (editingId) {
+    updatedMemories = (place.memories || []).map(m =>
+      m.id === editingId ? { ...m, author, rating, text, color: chosenColor } : m
+    );
+  } else {
+    const newMemory = { id: uid(), author, rating, text, color: chosenColor };
+    updatedMemories = [...(place.memories || []), newMemory];
+  }
 
   const postBtn = document.getElementById('postMemoryBtn');
   postBtn.disabled = true;
-  postBtn.textContent = 'Posting…';
+  postBtn.textContent = editingId ? 'Saving…' : 'Posting…';
 
   try {
     await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
     saveAuthorName(author);
-    saveAuthorColor(newMemory.color);
+    saveAuthorColor(chosenColor);
     place.memories = updatedMemories;
     openViewModal(placeId);
   } catch (err) {
     console.error(err);
     alert('Could not post your memory — check your internet connection and try again.');
     postBtn.disabled = false;
-    postBtn.textContent = '+ Add Your Memory';
+    postBtn.textContent = editingId ? '💾 Save Changes' : '+ Add Your Memory';
+  }
+}
+
+async function deleteMemory(placeId, memoryId) {
+  if (!confirm('Delete this memory?')) return;
+  const place = places.find(p => p.id === placeId);
+  if (!place) return;
+  const updatedMemories = (place.memories || []).filter(m => m.id !== memoryId);
+  try {
+    await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
+    place.memories = updatedMemories;
+    openViewModal(placeId);
+  } catch (err) {
+    console.error(err);
+    alert('Could not delete — check your internet connection and try again.');
   }
 }
 
@@ -371,8 +604,15 @@ function closeViewModal() {
 }
 
 // ---------- Lightbox ----------
-function openLightbox(src) {
+function openLightbox(src, website) {
   document.getElementById('lightboxImg').src = src;
+  const link = document.getElementById('lightboxWebsiteLink');
+  if (website) {
+    link.href = website;
+    link.style.display = 'inline-block';
+  } else {
+    link.style.display = 'none';
+  }
   document.getElementById('lightboxOverlay').classList.remove('hidden');
 }
 
@@ -381,8 +621,6 @@ function closeLightbox() {
 }
 
 // ---------- Add/Edit form ----------
-let pendingPhotos = [];
-
 function populateCuisineSelect(selected) {
   const select = document.getElementById('fCuisine');
   select.innerHTML = CUISINES.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
@@ -392,7 +630,6 @@ function populateCuisineSelect(selected) {
 function openFormModal(id) {
   const place = id ? places.find(p => p.id === id) : null;
   const placeId = place ? place.id : uid();
-  pendingPhotos = place && place.photos ? place.photos.slice() : [];
 
   document.getElementById('formTitle').textContent = place ? 'Edit Place' : 'Add a Place';
   document.getElementById('placeId').value = placeId;
@@ -400,34 +637,14 @@ function openFormModal(id) {
   populateCuisineSelect(place ? place.cuisine : 'Other');
   document.getElementById('fLocation').value = place ? place.location : '';
   document.getElementById('fWebsite').value = place ? place.website : '';
-  document.getElementById('fNotes').value = place ? place.notes : '';
-  document.getElementById('fPhotos').value = '';
   document.getElementById('addressHint').textContent = '';
   document.getElementById('deletePlaceBtn').style.display = place ? 'inline-block' : 'none';
 
-  renderPhotoPreview();
   document.getElementById('formOverlay').classList.remove('hidden');
 }
 
 function closeFormModal() {
   document.getElementById('formOverlay').classList.add('hidden');
-  pendingPhotos = [];
-}
-
-function renderPhotoPreview() {
-  const row = document.getElementById('photoPreviewRow');
-  row.innerHTML = pendingPhotos.map((src, i) => `
-    <div class="thumb-wrap">
-      <img src="${src}" alt="">
-      <button type="button" class="remove-x" data-idx="${i}">✕</button>
-    </div>
-  `).join('');
-  row.querySelectorAll('.remove-x').forEach(btn => {
-    btn.addEventListener('click', () => {
-      pendingPhotos.splice(Number(btn.dataset.idx), 1);
-      renderPhotoPreview();
-    });
-  });
 }
 
 async function uploadToImgbb(file) {
@@ -442,31 +659,6 @@ async function uploadToImgbb(file) {
   return json.data.url;
 }
 
-async function handlePhotoInput(e) {
-  const files = Array.from(e.target.files || []);
-  if (!files.length) return;
-
-  const photoBtn = document.getElementById('photoTriggerBtn');
-  const originalLabel = photoBtn.textContent;
-  photoBtn.disabled = true;
-
-  try {
-    for (const file of files) {
-      photoBtn.textContent = `📸 Uploading…`;
-      const url = await uploadToImgbb(file);
-      pendingPhotos.push(url);
-      renderPhotoPreview();
-    }
-  } catch (err) {
-    console.error(err);
-    alert('Photo upload failed — check your internet connection and try again.');
-  } finally {
-    photoBtn.disabled = false;
-    photoBtn.textContent = originalLabel;
-    e.target.value = '';
-  }
-}
-
 async function handleFormSubmit(e) {
   e.preventDefault();
   const id = document.getElementById('placeId').value;
@@ -479,8 +671,6 @@ async function handleFormSubmit(e) {
     cuisine: document.getElementById('fCuisine').value,
     location: document.getElementById('fLocation').value.trim(),
     website: document.getElementById('fWebsite').value.trim(),
-    notes: document.getElementById('fNotes').value.trim(),
-    photos: pendingPhotos.slice(),
   };
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -503,7 +693,7 @@ async function handleFormSubmit(e) {
 async function handleDelete() {
   const id = document.getElementById('placeId').value;
   if (!id) return;
-  if (!confirm('Remove this place from the album?')) return;
+  if (!confirm('Remove this place from the album? This cannot be undone.')) return;
   try {
     await deleteDoc(doc(db, PLACES_COLLECTION, id));
     closeFormModal();
@@ -560,10 +750,10 @@ document.getElementById('addPlaceBtn').addEventListener('click', () => openFormM
 document.getElementById('formCloseBtn').addEventListener('click', closeFormModal);
 document.getElementById('placeForm').addEventListener('submit', handleFormSubmit);
 document.getElementById('deletePlaceBtn').addEventListener('click', handleDelete);
-document.getElementById('fPhotos').addEventListener('change', handlePhotoInput);
-document.getElementById('photoTriggerBtn').addEventListener('click', () => document.getElementById('fPhotos').click());
 document.getElementById('findAddressBtn').addEventListener('click', findAddress);
 document.getElementById('findWebsiteBtn').addEventListener('click', findWebsite);
+
+document.getElementById('leaderboardBtn').addEventListener('click', openLeaderboard);
 
 document.getElementById('searchBox').addEventListener('input', (e) => {
   state.search = e.target.value;
@@ -572,6 +762,11 @@ document.getElementById('searchBox').addEventListener('input', (e) => {
 
 document.getElementById('sortSelect').addEventListener('change', (e) => {
   state.sort = e.target.value;
+  renderList();
+});
+
+document.getElementById('cuisineFilterSelect').addEventListener('change', (e) => {
+  state.cuisineFilter = e.target.value;
   renderList();
 });
 
@@ -586,7 +781,11 @@ document.getElementById('viewOverlay').addEventListener('click', (e) => {
 document.getElementById('formOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'formOverlay') closeFormModal();
 });
+document.getElementById('leaderboardOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'leaderboardOverlay') closeLeaderboard();
+});
 
+populateCuisineFilter();
 renderTabs();
 renderList();
 ensureSeeded().finally(subscribeToPlaces);
