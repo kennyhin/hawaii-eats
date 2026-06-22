@@ -1,7 +1,6 @@
 // Seed data parsed from the family's Hawaii eats list.
-// Bump this whenever SEED_PLACES changes so browsers with cached
-// localStorage data pick up the update instead of staying stale.
-const SEED_VERSION = 2;
+// Used once to populate Firestore the first time the site connects
+// to a fresh Firebase project (see firebase-config.js).
 const SEED_PLACES = [
   {
     "id": "hi-1",
@@ -914,3 +913,7 @@ const SEED_PLACES = [
     "cuisine": "Burgers"
   }
 ];
+
+// app.js loads as an ES module, which can't see this classic script's
+// top-level `const` directly — so attach it to window explicitly.
+window.SEED_PLACES = SEED_PLACES;

@@ -1,4 +1,12 @@
-const STORAGE_KEY = 'food_memory_album_v1';
+import { db, storage } from './firebase.js';
+import {
+  collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch,
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import {
+  ref, uploadBytes, getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
+
+const PLACES_COLLECTION = 'places';
 const COUNTRIES = ['Hawaii', 'Japan'];
 // left,top,right,bottom (lon/lat) per Nominatim viewbox format
 const COUNTRY_VIEWBOX = {
@@ -18,49 +26,34 @@ let state = {
   sort: 'az',
 };
 
-const SEED_VERSION_KEY = 'food_memory_album_seed_version';
-
-function loadPlaces() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  const storedVersion = Number(localStorage.getItem(SEED_VERSION_KEY) || 0);
-
-  if (!raw) {
-    localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION));
-    return SEED_PLACES.slice();
-  }
-
-  let stored;
-  try { stored = JSON.parse(raw); } catch (e) { stored = null; }
-  if (!stored) {
-    localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION));
-    return SEED_PLACES.slice();
-  }
-
-  if (storedVersion < SEED_VERSION) {
-    const seedById = Object.fromEntries(SEED_PLACES.map(p => [p.id, p]));
-    const merged = stored.map(p => {
-      const fresh = seedById[p.id];
-      if (!fresh) return p;
-      return { ...fresh, photos: p.photos && p.photos.length ? p.photos : fresh.photos };
-    });
-    const storedIds = new Set(stored.map(p => p.id));
-    SEED_PLACES.forEach(p => { if (!storedIds.has(p.id)) merged.push(p); });
-    localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION));
-    savePlaces(merged);
-    return merged;
-  }
-
-  return stored;
-}
-
-function savePlaces(places) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(places));
-}
-
-let places = loadPlaces();
+let places = [];
+let firstSnapshotReceived = false;
 
 function uid() {
   return 'p-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+}
+
+// ---------- Firestore sync ----------
+async function ensureSeeded() {
+  const snap = await getDocs(collection(db, PLACES_COLLECTION));
+  if (!snap.empty) return;
+  const seed = window.SEED_PLACES || [];
+  if (!seed.length) return;
+  const batch = writeBatch(db);
+  seed.forEach(p => batch.set(doc(db, PLACES_COLLECTION, p.id), p));
+  await batch.commit();
+}
+
+function subscribeToPlaces() {
+  onSnapshot(collection(db, PLACES_COLLECTION), snapshot => {
+    places = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    firstSnapshotReceived = true;
+    renderList();
+  }, err => {
+    document.getElementById('listContainer').innerHTML =
+      `<div class="empty-state">Couldn't connect to the shared album. Check the Firebase setup in firebase-config.js, or your internet connection.</div>`;
+    console.error(err);
+  });
 }
 
 // ---------- Tabs ----------
@@ -121,6 +114,13 @@ function placeThumb(place) {
 function renderList() {
   const container = document.getElementById('listContainer');
   const countLine = document.getElementById('countLine');
+
+  if (!firstSnapshotReceived) {
+    countLine.textContent = '';
+    container.innerHTML = `<div class="empty-state">Loading the shared album…</div>`;
+    return;
+  }
+
   const list = getFilteredSorted();
 
   countLine.textContent = `${list.length} place${list.length === 1 ? '' : 's'} in ${state.activeTab}`;
@@ -251,10 +251,11 @@ function populateCuisineSelect(selected) {
 
 function openFormModal(id) {
   const place = id ? places.find(p => p.id === id) : null;
+  const placeId = place ? place.id : uid();
   pendingPhotos = place && place.photos ? place.photos.slice() : [];
 
   document.getElementById('formTitle').textContent = place ? 'Edit Place' : 'Add a Place';
-  document.getElementById('placeId').value = place ? place.id : '';
+  document.getElementById('placeId').value = placeId;
   document.getElementById('fName').value = place ? place.name : '';
   populateCuisineSelect(place ? place.cuisine : 'Other');
   document.getElementById('fLocation').value = place ? place.location : '';
@@ -289,21 +290,36 @@ function renderPhotoPreview() {
   });
 }
 
-function handlePhotoInput(e) {
+async function handlePhotoInput(e) {
   const files = Array.from(e.target.files || []);
-  let remaining = files.length;
-  if (remaining === 0) return;
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      pendingPhotos.push(reader.result);
+  if (!files.length) return;
+
+  const placeId = document.getElementById('placeId').value;
+  const photoBtn = document.getElementById('photoTriggerBtn');
+  const originalLabel = photoBtn.textContent;
+  photoBtn.disabled = true;
+
+  try {
+    for (const file of files) {
+      photoBtn.textContent = `📸 Uploading…`;
+      const path = `photos/${placeId}/${Date.now()}-${file.name}`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      pendingPhotos.push(url);
       renderPhotoPreview();
-    };
-    reader.readAsDataURL(file);
-  });
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Photo upload failed — check your internet connection and try again.');
+  } finally {
+    photoBtn.disabled = false;
+    photoBtn.textContent = originalLabel;
+    e.target.value = '';
+  }
 }
 
-function handleFormSubmit(e) {
+async function handleFormSubmit(e) {
   e.preventDefault();
   const id = document.getElementById('placeId').value;
   const name = document.getElementById('fName').value.trim();
@@ -311,6 +327,7 @@ function handleFormSubmit(e) {
 
   const data = {
     name,
+    country: state.activeTab,
     cuisine: document.getElementById('fCuisine').value,
     location: document.getElementById('fLocation').value.trim(),
     website: document.getElementById('fWebsite').value.trim(),
@@ -318,26 +335,34 @@ function handleFormSubmit(e) {
     photos: pendingPhotos.slice(),
   };
 
-  if (id) {
-    const idx = places.findIndex(p => p.id === id);
-    if (idx !== -1) places[idx] = { ...places[idx], ...data };
-  } else {
-    places.push({ id: uid(), country: state.activeTab, ...data });
-  }
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalLabel = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Saving…';
 
-  savePlaces(places);
-  closeFormModal();
-  renderList();
+  try {
+    await setDoc(doc(db, PLACES_COLLECTION, id), data, { merge: true });
+    closeFormModal();
+  } catch (err) {
+    console.error(err);
+    alert('Could not save — check your internet connection and try again.');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
+  }
 }
 
-function handleDelete() {
+async function handleDelete() {
   const id = document.getElementById('placeId').value;
   if (!id) return;
   if (!confirm('Remove this place from the album?')) return;
-  places = places.filter(p => p.id !== id);
-  savePlaces(places);
-  closeFormModal();
-  renderList();
+  try {
+    await deleteDoc(doc(db, PLACES_COLLECTION, id));
+    closeFormModal();
+  } catch (err) {
+    console.error(err);
+    alert('Could not delete — check your internet connection and try again.');
+  }
 }
 
 // ---------- Lookup helpers (free, no API key) ----------
@@ -416,3 +441,4 @@ document.getElementById('formOverlay').addEventListener('click', (e) => {
 
 renderTabs();
 renderList();
+ensureSeeded().finally(subscribeToPlaces);

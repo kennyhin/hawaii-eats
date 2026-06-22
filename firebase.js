@@ -1,0 +1,8 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
+import { firebaseConfig } from "./firebase-config.js";
+
+export const firebaseApp = initializeApp(firebaseConfig);
+export const db = getFirestore(firebaseApp);
+export const storage = getStorage(firebaseApp);
