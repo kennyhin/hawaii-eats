@@ -310,6 +310,15 @@ function computeActivityFeed(limit = 8) {
         author: (place.addedBy || '').trim() || 'Someone',
       });
     }
+    if (place.lastPhotoAddedAt) {
+      events.push({
+        type: 'photo_added',
+        timestamp: place.lastPhotoAddedAt,
+        placeId: place.id,
+        placeName: place.name,
+        author: place.lastPhotoAddedBy || 'Someone',
+      });
+    }
     (place.memories || []).forEach(m => {
       if (m.createdAt) {
         events.push({
@@ -350,6 +359,8 @@ function activityText(item) {
   switch (item.type) {
     case 'place_added':
       return `<strong>${escapeHtml(item.author)}</strong> added <strong>${escapeHtml(item.placeName)}</strong>`;
+    case 'photo_added':
+      return `<strong>${escapeHtml(item.author)}</strong> added a photo to <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'memory_added':
       return `<strong>${escapeHtml(item.author)}</strong> left a ${item.rating}★ memory on <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'like':
@@ -362,7 +373,7 @@ function activityText(item) {
 }
 
 function activityIcon(type) {
-  return { place_added: '🆕', memory_added: '📝', like: '👍', dislike: '👎' }[type] || '•';
+  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎' }[type] || '•';
 }
 
 function renderActivityFeed() {
@@ -525,7 +536,13 @@ async function handlePhotoUpload(e, placeId) {
       const compressed = await compressImage(file);
       const url = await uploadToImgbb(compressed);
       place.photos = [...(place.photos || []), url];
-      await setDoc(doc(db, PLACES_COLLECTION, placeId), { photos: place.photos }, { merge: true });
+      place.lastPhotoAddedAt = Date.now();
+      place.lastPhotoAddedBy = getSavedAuthorName() || 'Someone';
+      await setDoc(doc(db, PLACES_COLLECTION, placeId), {
+        photos: place.photos,
+        lastPhotoAddedAt: place.lastPhotoAddedAt,
+        lastPhotoAddedBy: place.lastPhotoAddedBy,
+      }, { merge: true });
       document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
       wireGalleryHandlers(place);
       uploadedCount += 1;
