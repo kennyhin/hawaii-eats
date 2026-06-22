@@ -5,6 +5,47 @@ import {
 import { IMGBB_API_KEY } from './imgbb-config.js';
 
 const PLACES_COLLECTION = 'places';
+const PROFILES_COLLECTION = 'profiles';
+
+const SHOP_ICONS = [
+  { id: 'icon_soccer', emoji: '⚽', cost: 8 },
+  { id: 'icon_basketball', emoji: '🏀', cost: 8 },
+  { id: 'icon_football', emoji: '🏈', cost: 8 },
+  { id: 'icon_baseball', emoji: '⚾', cost: 8 },
+  { id: 'icon_tennis', emoji: '🎾', cost: 8 },
+  { id: 'icon_trophy', emoji: '🏆', cost: 12 },
+  { id: 'icon_cherry_blossom', emoji: '🌸', cost: 6 },
+  { id: 'icon_hibiscus', emoji: '🌺', cost: 6 },
+  { id: 'icon_sunflower', emoji: '🌻', cost: 6 },
+  { id: 'icon_rose', emoji: '🌹', cost: 6 },
+  { id: 'icon_bouquet', emoji: '💐', cost: 10 },
+  { id: 'icon_kiss_mark', emoji: '💋', cost: 8 },
+  { id: 'icon_blowing_kiss', emoji: '😘', cost: 8 },
+  { id: 'icon_love_letter', emoji: '💌', cost: 8 },
+  { id: 'icon_crown', emoji: '👑', cost: 12 },
+  { id: 'icon_fire', emoji: '🔥', cost: 10 },
+  { id: 'icon_star', emoji: '⭐', cost: 6 },
+  { id: 'icon_unicorn', emoji: '🦄', cost: 14 },
+];
+
+const SHOP_COLORS = [
+  { id: 'color_gold', label: 'Gold', hex: '#c8961e', cost: 8 },
+  { id: 'color_hotpink', label: 'Hot Pink', hex: '#e0298f', cost: 8 },
+  { id: 'color_electricblue', label: 'Electric Blue', hex: '#1e6fff', cost: 8 },
+  { id: 'color_emerald', label: 'Emerald', hex: '#0f9a5e', cost: 8 },
+  { id: 'color_lavender', label: 'Lavender', hex: '#8c6fd4', cost: 8 },
+];
+
+const SHOP_SKINS = [
+  { id: 'skin_stripes', label: 'Stripes', cost: 15, css: 'repeating-linear-gradient(45deg, #fca47c, #fca47c 10px, #f9d779 10px, #f9d779 20px)' },
+  { id: 'skin_sparkle', label: 'Sparkle', cost: 15, css: 'radial-gradient(circle at 20% 25%, #fff8d6 0%, transparent 14%), radial-gradient(circle at 70% 65%, #fff8d6 0%, transparent 10%), radial-gradient(circle at 45% 80%, #fff8d6 0%, transparent 8%), linear-gradient(135deg, #d8c6f0, #aee3f0)' },
+  { id: 'skin_sunset', label: 'Sunset', cost: 15, css: 'linear-gradient(135deg, #fca47c, #f9d779, #23ced9)' },
+  { id: 'skin_polka', label: 'Polka Dots', cost: 15, css: 'radial-gradient(circle, #ffffff 28%, transparent 30%) 0 0/18px 18px, #a1cca6' },
+  { id: 'skin_galaxy', label: 'Galaxy', cost: 15, css: 'radial-gradient(circle at 25% 30%, rgba(255,255,255,0.55) 0%, transparent 6%), radial-gradient(circle at 65% 55%, rgba(255,255,255,0.4) 0%, transparent 5%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.45) 0%, transparent 4%), linear-gradient(135deg, #2c2a26, #097c87)' },
+];
+
+const SHOP_CATALOG = { icon: SHOP_ICONS, color: SHOP_COLORS, skin: SHOP_SKINS };
+const EQUIP_FIELD = { icon: 'equippedIcon', color: 'equippedColor', skin: 'equippedSkin' };
 const COUNTRIES = ['Hawaii', 'Japan'];
 // left,top,right,bottom (lon/lat) per Nominatim viewbox format
 const COUNTRY_VIEWBOX = {
@@ -26,7 +67,12 @@ let state = {
 };
 
 let places = [];
+let profiles = {};
 let firstSnapshotReceived = false;
+
+function normalizeName(name) {
+  return (name || '').trim().toLowerCase();
+}
 
 const AUTHOR_NAME_KEY = 'food_memory_album_author_name';
 const AUTHOR_COLOR_KEY = 'food_memory_album_author_color';
@@ -85,10 +131,27 @@ function subscribeToPlaces() {
     if (!document.getElementById('leaderboardOverlay').classList.contains('hidden')) {
       openLeaderboard();
     }
+    if (!document.getElementById('shopOverlay').classList.contains('hidden')) {
+      openShop();
+    }
   }, err => {
     document.getElementById('listContainer').innerHTML =
       `<div class="empty-state">Couldn't connect to the shared album. Check the Firebase setup in firebase-config.js, or your internet connection.</div>`;
     console.error(err);
+  });
+}
+
+function subscribeToProfiles() {
+  onSnapshot(collection(db, PROFILES_COLLECTION), snapshot => {
+    profiles = {};
+    snapshot.docs.forEach(d => { profiles[d.id] = d.data(); });
+    renderList();
+    renderActivityFeed();
+    if (!document.getElementById('shopOverlay').classList.contains('hidden')) {
+      openShop();
+    }
+  }, err => {
+    console.error('Could not load shop profiles (the "profiles" Firestore collection may need its security rule added):', err);
   });
 }
 
@@ -241,8 +304,10 @@ function populateCuisineFilter() {
 function computeLeaderboard() {
   const stats = {};
   function ensure(name, color) {
-    if (!stats[name]) stats[name] = { name, points: 0, placesAdded: 0, memoriesCount: 0, ratingSum: 0, color: color || BUBBLE_COLORS[0] };
-    return stats[name];
+    const key = normalizeName(name);
+    if (!stats[key]) stats[key] = { name, points: 0, placesAdded: 0, memoriesCount: 0, ratingSum: 0, color: color || BUBBLE_COLORS[0] };
+    stats[key].name = name; // keep most-recently-seen casing as the display name
+    return stats[key];
   }
 
   places.forEach(place => {
@@ -268,6 +333,24 @@ function computeLeaderboard() {
     .sort((a, b) => b.points - a.points || b.memoriesCount - a.memoriesCount);
 }
 
+function getEarnedPoints(name) {
+  const key = normalizeName(name);
+  const entry = computeLeaderboard().find(c => normalizeName(c.name) === key);
+  return entry ? entry.points : 0;
+}
+
+function getProfile(name) {
+  return profiles[normalizeName(name)] || null;
+}
+
+function authorBadgeHtml(name) {
+  const profile = getProfile(name);
+  const icon = profile?.equippedIcon ? SHOP_ICONS.find(i => i.id === profile.equippedIcon)?.emoji : '';
+  const colorItem = profile?.equippedColor ? SHOP_COLORS.find(c => c.id === profile.equippedColor) : null;
+  const style = colorItem ? ` style="color:${colorItem.hex}"` : '';
+  return `<span class="author-badge"${style}>${icon ? icon + ' ' : ''}${escapeHtml(name)}</span>`;
+}
+
 function openLeaderboard() {
   const data = computeLeaderboard();
   const medals = ['🥇', '🥈', '🥉'];
@@ -282,7 +365,7 @@ function openLeaderboard() {
           <div class="leaderboard-row">
             <span class="leaderboard-rank">${medals[i] || (i + 1) + '.'}</span>
             <span class="leaderboard-avatar" style="background:${escapeHtml(c.color)}">${escapeHtml((c.name[0] || '?').toUpperCase())}</span>
-            <span class="leaderboard-name">${escapeHtml(c.name)}</span>
+            <span class="leaderboard-name">${authorBadgeHtml(c.name)}</span>
             <span class="leaderboard-stats">${c.points} pts<br>${c.placesAdded} place${c.placesAdded === 1 ? '' : 's'} · ${c.memoriesCount} memor${c.memoriesCount === 1 ? 'y' : 'ies'}</span>
           </div>
         `).join('')}
@@ -294,6 +377,135 @@ function openLeaderboard() {
 
 function closeLeaderboard() {
   document.getElementById('leaderboardOverlay').classList.add('hidden');
+}
+
+// ---------- Shop ----------
+function shopItemPreview(category, item) {
+  if (category === 'icon') return `<span class="shop-preview shop-preview-icon">${item.emoji}</span>`;
+  if (category === 'color') return `<span class="shop-preview shop-preview-color" style="background:${item.hex}"></span>`;
+  return `<span class="shop-preview shop-preview-skin" style="background:${item.css}"></span>`;
+}
+
+function shopItemLabel(category, item) {
+  if (category === 'icon') return item.emoji;
+  return item.label;
+}
+
+function openShop() {
+  const name = getSavedAuthorName();
+  const profile = name ? getProfile(name) : null;
+  const earned = name ? getEarnedPoints(name) : 0;
+  const spent = profile?.spentPoints || 0;
+  const available = earned - spent;
+
+  const sections = [
+    { category: 'icon', title: '⚽ Icons', items: SHOP_ICONS },
+    { category: 'color', title: '🎨 Name Colors', items: SHOP_COLORS },
+    { category: 'skin', title: '✨ Memory Skins (15 pts each)', items: SHOP_SKINS },
+  ];
+
+  const modal = document.getElementById('shopModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="shopCloseBtn">✕</button>
+    <h2>🛍️ Shop</h2>
+    <p class="leaderboard-legend">Spend the points you've earned on the leaderboard for icons, name colors, and memory bubble skins.</p>
+
+    <div class="shop-name-field">
+      <label>Who are you?</label>
+      <input type="text" id="shopNameInput" placeholder="Your name" value="${escapeHtml(name)}">
+    </div>
+
+    ${name ? `<p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>`
+      : `<p class="hint">Type your name above to see your balance and start shopping.</p>`}
+
+    ${sections.map(section => `
+      <h3 class="shop-section-title">${section.title}</h3>
+      <div class="shop-grid">
+        ${section.items.map(item => {
+          const owned = profile?.unlocked?.includes(item.id);
+          const equipped = profile?.[EQUIP_FIELD[section.category]] === item.id;
+          let buttonHtml;
+          if (!name) {
+            buttonHtml = `<button type="button" class="btn-shop-item" disabled>${item.cost} pts</button>`;
+          } else if (equipped) {
+            buttonHtml = `<button type="button" class="btn-shop-item shop-equipped" disabled>✓ Equipped</button>`;
+          } else if (owned) {
+            buttonHtml = `<button type="button" class="btn-shop-item shop-equip-btn" data-category="${section.category}" data-id="${item.id}">Equip</button>`;
+          } else {
+            const canAfford = available >= item.cost;
+            buttonHtml = `<button type="button" class="btn-shop-item ${canAfford ? 'shop-buy-btn' : 'shop-locked-btn'}" data-category="${section.category}" data-id="${item.id}" data-cost="${item.cost}" ${canAfford ? '' : 'disabled'}>${canAfford ? `Buy · ${item.cost} pts` : `🔒 ${item.cost} pts`}</button>`;
+          }
+          return `
+            <div class="shop-item">
+              ${shopItemPreview(section.category, item)}
+              <span class="shop-item-label">${shopItemLabel(section.category, item)}</span>
+              ${buttonHtml}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `).join('')}
+  `;
+
+  document.getElementById('shopCloseBtn').addEventListener('click', closeShop);
+  document.getElementById('shopNameInput').addEventListener('change', (e) => {
+    saveAuthorName(e.target.value.trim());
+    openShop();
+  });
+  modal.querySelectorAll('.shop-buy-btn').forEach(btn => {
+    btn.addEventListener('click', () => buyItem(name, btn.dataset.category, btn.dataset.id, Number(btn.dataset.cost)));
+  });
+  modal.querySelectorAll('.shop-equip-btn').forEach(btn => {
+    btn.addEventListener('click', () => equipItem(name, btn.dataset.category, btn.dataset.id));
+  });
+
+  document.getElementById('shopOverlay').classList.remove('hidden');
+}
+
+function closeShop() {
+  document.getElementById('shopOverlay').classList.add('hidden');
+}
+
+async function buyItem(name, category, itemId, cost) {
+  if (!name) return;
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [] };
+  const available = getEarnedPoints(name) - (profile.spentPoints || 0);
+  if (available < cost) {
+    alert("You don't have enough points for that yet!");
+    return;
+  }
+  const unlocked = [...new Set([...(profile.unlocked || []), itemId])];
+  const updates = {
+    displayName: name,
+    spentPoints: (profile.spentPoints || 0) + cost,
+    unlocked,
+    [EQUIP_FIELD[category]]: itemId,
+  };
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+    openShop();
+  } catch (err) {
+    console.error(err);
+    alert('Could not complete that purchase — check your internet connection and try again. (If this keeps happening, the "profiles" Firestore collection may need its security rule added.)');
+  }
+}
+
+async function equipItem(name, category, itemId) {
+  if (!name) return;
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [] };
+  const currentlyEquipped = profile[EQUIP_FIELD[category]] === itemId;
+  const updates = { displayName: name, [EQUIP_FIELD[category]]: currentlyEquipped ? null : itemId };
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+    openShop();
+  } catch (err) {
+    console.error(err);
+    alert('Could not update your equipped item — check your internet connection and try again.');
+  }
 }
 
 // ---------- Activity feed ----------
@@ -360,19 +572,20 @@ function pointsBadge(points) {
 }
 
 function activityText(item) {
+  const who = authorBadgeHtml(item.author);
   switch (item.type) {
     case 'place_added':
-      return `<strong>${escapeHtml(item.author)}</strong> added <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(2)}`;
+      return `${who} added <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(2)}`;
     case 'photo_added':
-      return `<strong>${escapeHtml(item.author)}</strong> added a photo to <strong>${escapeHtml(item.placeName)}</strong>`;
+      return `${who} added a photo to <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'memory_added':
-      return `<strong>${escapeHtml(item.author)}</strong> left a ${item.rating}★ memory on <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(1)}`;
+      return `${who} left a ${item.rating}★ memory on <strong>${escapeHtml(item.placeName)}</strong> ${pointsBadge(1)}`;
     case 'like':
-      return `<strong>${escapeHtml(item.author)}</strong> 👍 liked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
+      return `${who} 👍 liked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'dislike':
-      return `<strong>${escapeHtml(item.author)}</strong> 👎 disliked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
+      return `${who} 👎 disliked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'funny':
-      return `<strong>${escapeHtml(item.author)}</strong> 😂 found ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong> funny`;
+      return `${who} 😂 found ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong> funny`;
     default:
       return '';
   }
@@ -632,10 +845,13 @@ function openViewModal(id) {
         ${memories.length ? memories.map(m => {
           const isTop = topContributor && (m.author || '').trim() === topContributor;
           const reaction = getReaction(m.id);
+          const equippedSkinId = getProfile(m.author)?.equippedSkin;
+          const skin = SHOP_SKINS.find(s => s.id === equippedSkinId);
+          const bubbleBg = skin ? skin.css : (m.color || BUBBLE_COLORS[0]);
           return `
-          <div class="memory-bubble ${isTop ? 'memory-bubble-top' : ''}" style="background:${escapeHtml(m.color || BUBBLE_COLORS[0])}">
+          <div class="memory-bubble ${isTop ? 'memory-bubble-top' : ''}" style="background:${bubbleBg}">
             <div class="memory-card-top">
-              <span class="memory-author">${escapeHtml(m.author)} ${isTop ? '<span class="top-badge">🥇 #1</span>' : ''}</span>
+              <span class="memory-author">${authorBadgeHtml(m.author)} ${isTop ? '<span class="top-badge">🥇 #1</span>' : ''}</span>
               <div class="memory-actions">
                 ${renderStarsDisplay(m.rating)}
                 <button type="button" class="memory-icon-btn memory-edit-btn" data-id="${m.id}" title="Edit">✎</button>
@@ -1043,6 +1259,7 @@ document.getElementById('findWebsiteBtn').addEventListener('click', findWebsite)
 
 document.getElementById('leaderboardBtn').addEventListener('click', openLeaderboard);
 document.getElementById('randomizerBtn').addEventListener('click', openRandomizer);
+document.getElementById('shopBtn').addEventListener('click', openShop);
 
 document.getElementById('searchBox').addEventListener('input', (e) => {
   state.search = e.target.value;
@@ -1076,8 +1293,12 @@ document.getElementById('leaderboardOverlay').addEventListener('click', (e) => {
 document.getElementById('randomizerOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'randomizerOverlay') closeRandomizer();
 });
+document.getElementById('shopOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'shopOverlay') closeShop();
+});
 
 populateCuisineFilter();
 renderTabs();
 renderList();
 ensureSeeded().finally(subscribeToPlaces);
+subscribeToProfiles();

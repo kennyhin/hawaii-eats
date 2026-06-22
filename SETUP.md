@@ -43,6 +43,31 @@ instead for photos.) Takes about 10 minutes total.
    [firebase-config.js](firebase-config.js) in this repo, replacing the
    `PASTE_YOUR_...` placeholders.
 
+## 3b. Add the rule for the Shop feature
+
+The Shop (spending leaderboard points on icons/colors/skins) stores data in
+a second collection, `profiles`. Go back to **Firestore Database -> Rules**
+and update it to cover both collections:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /places/{placeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /profiles/{profileId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
+```
+
+Click **Publish**. Until this is added, the rest of the site works fine —
+the Shop will just fail to save purchases (caught gracefully, no crash).
+
 ## 4. Set up ImgBB (free photo hosting, no card)
 
 1. Go to https://imgbb.com and create a free account.

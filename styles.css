@@ -360,6 +360,10 @@ main {
   position: relative;
 }
 
+.modal-wide {
+  max-width: 760px;
+}
+
 .modal-close {
   position: absolute;
   top: 14px;
@@ -909,6 +913,126 @@ form.place-form textarea {
   flex-direction: column;
   gap: 10px;
   margin-top: 16px;
+}
+
+.author-badge {
+  font-weight: inherit;
+}
+
+.shop-name-field {
+  margin: 14px 0;
+}
+
+.shop-name-field label {
+  display: block;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ocean-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
+}
+
+.shop-name-field input {
+  width: 100%;
+  max-width: 280px;
+  padding: 9px 12px;
+  font-size: 15px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+}
+
+.shop-balance {
+  font-size: 16px;
+  margin: 10px 0 4px;
+}
+
+.shop-balance strong {
+  color: var(--ocean-dark);
+  font-size: 19px;
+}
+
+.shop-section-title {
+  font-size: 16px;
+  margin: 20px 0 10px;
+  color: var(--ocean-dark);
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.shop-item {
+  background: var(--sand);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.shop-preview {
+  display: block;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+}
+
+.shop-preview-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  background: white;
+}
+
+.shop-preview-color {
+  border-color: transparent;
+}
+
+.shop-item-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.btn-shop-item {
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shop-buy-btn {
+  background: var(--coral);
+  color: white;
+}
+
+.shop-equip-btn {
+  background: var(--ocean);
+  color: white;
+}
+
+.shop-equipped {
+  background: var(--sage);
+  color: var(--ink);
+  cursor: default;
+}
+
+.shop-locked-btn {
+  background: #e7ddc9;
+  color: #9a9484;
+  cursor: not-allowed;
 }
 
 @keyframes diceSpin {
