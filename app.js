@@ -372,12 +372,18 @@ async function handleMemoryPhotoUpload(e, placeId) {
   }
 }
 
+function getTopContributorName() {
+  const board = computeLeaderboard();
+  return board.length ? board[0].name : null;
+}
+
 function openViewModal(id) {
   const place = places.find(p => p.id === id);
   if (!place) return;
 
   const memories = place.memories || [];
   const avg = averageRating(memories);
+  const topContributor = getTopContributorName();
 
   const modal = document.getElementById('viewModal');
   modal.innerHTML = `
@@ -409,10 +415,12 @@ function openViewModal(id) {
       </div>
 
       <div id="memoryList">
-        ${memories.length ? memories.map(m => `
-          <div class="memory-bubble" style="background:${escapeHtml(m.color || BUBBLE_COLORS[0])}">
+        ${memories.length ? memories.map(m => {
+          const isTop = topContributor && (m.author || '').trim() === topContributor;
+          return `
+          <div class="memory-bubble ${isTop ? 'memory-bubble-top' : ''}" style="background:${escapeHtml(m.color || BUBBLE_COLORS[0])}">
             <div class="memory-card-top">
-              <span class="memory-author">${escapeHtml(m.author)}</span>
+              <span class="memory-author">${escapeHtml(m.author)} ${isTop ? '<span class="top-badge">🥇 #1</span>' : ''}</span>
               <div class="memory-actions">
                 ${renderStarsDisplay(m.rating)}
                 <button type="button" class="memory-icon-btn memory-edit-btn" data-id="${m.id}" title="Edit">✎</button>
@@ -421,7 +429,8 @@ function openViewModal(id) {
             </div>
             ${m.text ? `<p class="memory-text">${escapeHtml(m.text)}</p>` : ''}
           </div>
-        `).join('') : `<p class="no-memories">No memories yet — be the first!</p>`}
+        `;
+        }).join('') : `<p class="no-memories">No memories yet — be the first!</p>`}
       </div>
 
       <div class="memory-form">
