@@ -314,7 +314,10 @@ function closeRandomizer() {
 
 // ---------- View modal ----------
 function renderPhotoGalleryItems(place) {
-  return (place.photos || []).map((src, i) => `
+  if (!place.photos || !place.photos.length) {
+    return `<p class="no-memories">No photos yet — add the first one!</p>`;
+  }
+  return place.photos.map((src, i) => `
     <div class="photo-wrap">
       <img src="${src}" alt="" data-idx="${i}">
       <button type="button" class="photo-delete-btn" data-idx="${i}" title="Delete photo">✕</button>
@@ -323,7 +326,6 @@ function renderPhotoGalleryItems(place) {
 }
 
 function wireGalleryHandlers(place) {
-  const wrapper = document.getElementById('photoFieldWrapper');
   const gallery = document.getElementById('photoGallery');
   gallery.querySelectorAll('img').forEach(img => {
     img.addEventListener('click', () => openLightbox(img.src, place.website));
@@ -334,7 +336,6 @@ function wireGalleryHandlers(place) {
       deletePhoto(place.id, Number(btn.dataset.idx));
     });
   });
-  wrapper.style.display = (place.photos && place.photos.length) ? '' : 'none';
 }
 
 async function deletePhoto(placeId, idx) {
@@ -389,18 +390,19 @@ async function compressImage(file, maxDim = 1280, quality = 0.72) {
   return new File([blob], (file.name || 'photo').replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
 }
 
-async function handleMemoryPhotoUpload(e, placeId) {
+async function handlePhotoUpload(e, placeId) {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
 
-  const btn = document.getElementById('addMemoryPhotoBtn');
+  const btn = document.getElementById('addPhotoBtn');
+  const originalLabel = btn.textContent;
   btn.disabled = true;
   const place = places.find(p => p.id === placeId);
   if (!place) return;
 
   try {
     for (const file of files) {
-      btn.textContent = '⏳';
+      btn.textContent = '⏳ Uploading…';
       const compressed = await compressImage(file);
       const url = await uploadToImgbb(compressed);
       place.photos = [...(place.photos || []), url];
@@ -413,7 +415,7 @@ async function handleMemoryPhotoUpload(e, placeId) {
     alert('Photo upload failed — check your internet connection and try again.');
   } finally {
     btn.disabled = false;
-    btn.textContent = '📸';
+    btn.textContent = originalLabel;
     e.target.value = '';
   }
 }
@@ -449,8 +451,12 @@ function openViewModal(id) {
         <a href="${escapeHtml(place.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(place.website)}</a>
       </div>` : ''}
 
-    <div class="field" id="photoFieldWrapper" style="${place.photos && place.photos.length ? '' : 'display:none;'}">
-      <label>Photos</label>
+    <div class="field" id="photoFieldWrapper">
+      <div class="photo-field-header">
+        <label>Photos</label>
+        <button type="button" class="btn-add-photo" id="addPhotoBtn">📸 Add Photo</button>
+        <input type="file" id="photoInput" accept="image/*" multiple class="visually-hidden">
+      </div>
       <div class="photo-gallery" id="photoGallery">${renderPhotoGalleryItems(place)}</div>
     </div>
 
@@ -497,8 +503,6 @@ function openViewModal(id) {
         <textarea id="memoryTextInput" placeholder="What did you think?"></textarea>
 
         <div class="memory-form-actions">
-          <input type="file" id="memoryPhotoInput" accept="image/*" multiple class="visually-hidden">
-          <button type="button" class="btn-photo-small" id="addMemoryPhotoBtn" title="Add a photo">📸</button>
           <button type="button" class="btn btn-primary" id="postMemoryBtn">+ Add Your Memory</button>
           <button type="button" class="cancel-edit-btn" id="cancelEditBtn" style="display:none;">Cancel edit</button>
         </div>
@@ -518,10 +522,10 @@ function openViewModal(id) {
 
   wireGalleryHandlers(place);
 
-  document.getElementById('addMemoryPhotoBtn').addEventListener('click', () => {
-    document.getElementById('memoryPhotoInput').click();
+  document.getElementById('addPhotoBtn').addEventListener('click', () => {
+    document.getElementById('photoInput').click();
   });
-  document.getElementById('memoryPhotoInput').addEventListener('change', (e) => handleMemoryPhotoUpload(e, place.id));
+  document.getElementById('photoInput').addEventListener('change', (e) => handlePhotoUpload(e, place.id));
 
   const formState = { rating: 0, color: getSavedAuthorColor(), editingId: null };
 
