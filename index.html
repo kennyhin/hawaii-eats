@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260621j">
+<link rel="stylesheet" href="styles.css?v=20260621k">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 </head>
 <body>
@@ -16,6 +16,7 @@
   <h1>🌴 Our Food Memory Album 🍜</h1>
   <p>Every place we've eaten, and the memories that came with it</p>
   <div class="tabs" id="tabs"></div>
+  <div class="tabs tabs-sub" id="categoryTabs"></div>
 </header>
 <div class="wave-divider"></div>
 
@@ -26,6 +27,8 @@
     <select id="sortSelect">
       <option value="az">Sort A → Z</option>
       <option value="za">Sort Z → A</option>
+      <option value="best">★ Best Rated</option>
+      <option value="worst">★ Worst Rated</option>
     </select>
     <button class="btn btn-secondary" id="leaderboardBtn">🏆 Leaderboard</button>
     <button class="btn btn-secondary" id="randomizerBtn">🎲 Randomize</button>
@@ -64,8 +67,13 @@
       <label for="fName">What's the name of the place?</label>
       <input type="text" id="fName" required>
 
-      <label for="fCuisine">What type of food is it?</label>
+      <label for="fCuisine" id="fCuisineLabel">What type of food is it?</label>
       <select id="fCuisine"></select>
+
+      <div id="fDistanceField" style="display:none;">
+        <label for="fDistance">Distance (roundtrip)</label>
+        <input type="text" id="fDistance" placeholder="e.g. 4.2 miles">
+      </div>
 
       <label for="fLocation">Where is it located?</label>
       <div class="lookup-row">
@@ -115,7 +123,7 @@
 
 <!-- Bump the ?v= on these whenever app.js/styles.css/hawaii_seed.js change, so
      everyone's browser fetches the new version instead of a stale cached copy. -->
-<script src="hawaii_seed.js?v=20260621j"></script>
-<script type="module" src="app.js?v=20260621j"></script>
+<script src="hawaii_seed.js?v=20260621k"></script>
+<script type="module" src="app.js?v=20260621k"></script>
 </body>
 </html>

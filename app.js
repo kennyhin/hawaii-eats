@@ -7,42 +7,58 @@ import { IMGBB_API_KEY } from './imgbb-config.js';
 const PLACES_COLLECTION = 'places';
 const PROFILES_COLLECTION = 'profiles';
 
+const ICON_COST = 10;
+const COLOR_COST = 25;
+const SKIN_COST = 40;
+
 const SHOP_ICONS = [
-  { id: 'icon_soccer', emoji: '⚽', cost: 8 },
-  { id: 'icon_basketball', emoji: '🏀', cost: 8 },
-  { id: 'icon_football', emoji: '🏈', cost: 8 },
-  { id: 'icon_baseball', emoji: '⚾', cost: 8 },
-  { id: 'icon_tennis', emoji: '🎾', cost: 8 },
-  { id: 'icon_trophy', emoji: '🏆', cost: 12 },
-  { id: 'icon_cherry_blossom', emoji: '🌸', cost: 6 },
-  { id: 'icon_hibiscus', emoji: '🌺', cost: 6 },
-  { id: 'icon_sunflower', emoji: '🌻', cost: 6 },
-  { id: 'icon_rose', emoji: '🌹', cost: 6 },
-  { id: 'icon_bouquet', emoji: '💐', cost: 10 },
-  { id: 'icon_kiss_mark', emoji: '💋', cost: 8 },
-  { id: 'icon_blowing_kiss', emoji: '😘', cost: 8 },
-  { id: 'icon_love_letter', emoji: '💌', cost: 8 },
-  { id: 'icon_crown', emoji: '👑', cost: 12 },
-  { id: 'icon_fire', emoji: '🔥', cost: 10 },
-  { id: 'icon_star', emoji: '⭐', cost: 6 },
-  { id: 'icon_unicorn', emoji: '🦄', cost: 14 },
+  { id: 'icon_soccer', emoji: '⚽', label: 'Soccer', cost: ICON_COST },
+  { id: 'icon_basketball', emoji: '🏀', label: 'Basketball', cost: ICON_COST },
+  { id: 'icon_football', emoji: '🏈', label: 'Football', cost: ICON_COST },
+  { id: 'icon_baseball', emoji: '⚾', label: 'Baseball', cost: ICON_COST },
+  { id: 'icon_tennis', emoji: '🎾', label: 'Tennis', cost: ICON_COST },
+  { id: 'icon_trophy', emoji: '🏆', label: 'Trophy', cost: ICON_COST },
+  { id: 'icon_cherry_blossom', emoji: '🌸', label: 'Cherry Blossom', cost: ICON_COST },
+  { id: 'icon_hibiscus', emoji: '🌺', label: 'Hibiscus', cost: ICON_COST },
+  { id: 'icon_sunflower', emoji: '🌻', label: 'Sunflower', cost: ICON_COST },
+  { id: 'icon_rose', emoji: '🌹', label: 'Rose', cost: ICON_COST },
+  { id: 'icon_bouquet', emoji: '💐', label: 'Bouquet', cost: ICON_COST },
+  { id: 'icon_kiss_mark', emoji: '💋', label: 'Kiss Mark', cost: ICON_COST },
+  { id: 'icon_blowing_kiss', emoji: '😘', label: 'Blowing Kiss', cost: ICON_COST },
+  { id: 'icon_love_letter', emoji: '💌', label: 'Love Letter', cost: ICON_COST },
+  { id: 'icon_crown', emoji: '👑', label: 'Crown', cost: ICON_COST },
+  { id: 'icon_fire', emoji: '🔥', label: 'Fire', cost: ICON_COST },
+  { id: 'icon_star', emoji: '⭐', label: 'Star', cost: ICON_COST },
+  { id: 'icon_unicorn', emoji: '🦄', label: 'Unicorn', cost: ICON_COST },
 ];
 
 const SHOP_COLORS = [
-  { id: 'color_gold', label: 'Gold', hex: '#c8961e', cost: 8 },
-  { id: 'color_hotpink', label: 'Hot Pink', hex: '#e0298f', cost: 8 },
-  { id: 'color_electricblue', label: 'Electric Blue', hex: '#1e6fff', cost: 8 },
-  { id: 'color_emerald', label: 'Emerald', hex: '#0f9a5e', cost: 8 },
-  { id: 'color_lavender', label: 'Lavender', hex: '#8c6fd4', cost: 8 },
+  { id: 'color_gold', label: 'Gold', hex: '#c8961e', cost: COLOR_COST },
+  { id: 'color_hotpink', label: 'Hot Pink', hex: '#e0298f', cost: COLOR_COST },
+  { id: 'color_electricblue', label: 'Electric Blue', hex: '#1e6fff', cost: COLOR_COST },
+  { id: 'color_emerald', label: 'Emerald', hex: '#0f9a5e', cost: COLOR_COST },
+  { id: 'color_lavender', label: 'Lavender', hex: '#8c6fd4', cost: COLOR_COST },
 ];
 
+// Gradient skins get a translucent white wash mixed in (via the `overlay`
+// opacity) so memory text stays readable on top of them. Image-based custom
+// skins (dropped in /skins/) use `image` + the same overlay technique.
 const SHOP_SKINS = [
-  { id: 'skin_stripes', label: 'Stripes', cost: 15, css: 'repeating-linear-gradient(45deg, #fca47c, #fca47c 10px, #f9d779 10px, #f9d779 20px)' },
-  { id: 'skin_sparkle', label: 'Sparkle', cost: 15, css: 'radial-gradient(circle at 20% 25%, #fff8d6 0%, transparent 14%), radial-gradient(circle at 70% 65%, #fff8d6 0%, transparent 10%), radial-gradient(circle at 45% 80%, #fff8d6 0%, transparent 8%), linear-gradient(135deg, #d8c6f0, #aee3f0)' },
-  { id: 'skin_sunset', label: 'Sunset', cost: 15, css: 'linear-gradient(135deg, #fca47c, #f9d779, #23ced9)' },
-  { id: 'skin_polka', label: 'Polka Dots', cost: 15, css: 'radial-gradient(circle, #ffffff 28%, transparent 30%) 0 0/18px 18px, #a1cca6' },
-  { id: 'skin_galaxy', label: 'Galaxy', cost: 15, css: 'radial-gradient(circle at 25% 30%, rgba(255,255,255,0.55) 0%, transparent 6%), radial-gradient(circle at 65% 55%, rgba(255,255,255,0.4) 0%, transparent 5%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.45) 0%, transparent 4%), linear-gradient(135deg, #2c2a26, #097c87)' },
+  { id: 'skin_stripes', label: 'Stripes', cost: SKIN_COST, overlay: 0.45, css: 'repeating-linear-gradient(45deg, #fca47c, #fca47c 10px, #f9d779 10px, #f9d779 20px)' },
+  { id: 'skin_sparkle', label: 'Sparkle', cost: SKIN_COST, overlay: 0.25, css: 'radial-gradient(circle at 20% 25%, #fff8d6 0%, transparent 14%), radial-gradient(circle at 70% 65%, #fff8d6 0%, transparent 10%), radial-gradient(circle at 45% 80%, #fff8d6 0%, transparent 8%), linear-gradient(135deg, #d8c6f0, #aee3f0)' },
+  { id: 'skin_sunset', label: 'Sunset', cost: SKIN_COST, overlay: 0.35, css: 'linear-gradient(135deg, #fca47c, #f9d779, #23ced9)' },
+  { id: 'skin_polka', label: 'Polka Dots', cost: SKIN_COST, overlay: 0.25, css: 'radial-gradient(circle, #ffffff 28%, transparent 30%) 0 0/18px 18px, #a1cca6' },
+  { id: 'skin_galaxy', label: 'Galaxy', cost: SKIN_COST, overlay: 0.55, css: 'radial-gradient(circle at 25% 30%, rgba(255,255,255,0.55) 0%, transparent 6%), radial-gradient(circle at 65% 55%, rgba(255,255,255,0.4) 0%, transparent 5%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.45) 0%, transparent 4%), linear-gradient(135deg, #2c2a26, #097c87)' },
 ];
+
+function skinBackgroundCss(skin) {
+  const overlay = skin.overlay ?? 0.4;
+  const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
+  if (skin.image) {
+    return `${wash}, url('${skin.image}') center/cover no-repeat`;
+  }
+  return `${wash}, ${skin.css}`;
+}
 
 const SHOP_CATALOG = { icon: SHOP_ICONS, color: SHOP_COLORS, skin: SHOP_SKINS };
 const EQUIP_FIELD = { icon: 'equippedIcon', color: 'equippedColor', skin: 'equippedSkin' };
@@ -59,8 +75,19 @@ const CUISINES = [
   'Food Court / Variety', 'Other',
 ];
 
+// Hawaii is split into sub-sections (Eats / Beaches / Hikes). Each reuses the
+// same place/photo/memory/leaderboard machinery, but the "type" dropdown and
+// extra fields differ per section. Japan has no sub-sections — it's eats-only.
+const CATEGORIES = ['eats', 'beaches', 'hikes'];
+const CATEGORY_CONFIG = {
+  eats: { label: '🍽️ Eats', singular: 'a Place', tagLabel: 'What type of food is it?', tagOptions: CUISINES, hasDistance: false },
+  beaches: { label: '🏖️ Beaches', singular: 'a Beach', tagLabel: 'What kind of beach is it?', tagOptions: ['Family-Friendly', 'Surfing', 'Snorkeling', 'Sunset Spot', 'Tide Pools', 'Other'], hasDistance: false },
+  hikes: { label: '🥾 Hikes', singular: 'a Hike', tagLabel: 'How difficult is it?', tagOptions: ['Easy', 'Moderate', 'Hard', 'Other'], hasDistance: true },
+};
+
 let state = {
   activeTab: 'Hawaii',
+  activeCategory: 'eats',
   search: '',
   sort: 'az',
   cuisineFilter: 'all',
@@ -165,16 +192,54 @@ function renderTabs() {
     btn.textContent = country;
     btn.addEventListener('click', () => {
       state.activeTab = country;
+      state.cuisineFilter = 'all';
       renderTabs();
+      renderCategoryTabs();
+      populateCuisineFilterSelect();
       renderList();
     });
     tabsEl.appendChild(btn);
   });
+  renderCategoryTabs();
+}
+
+function renderCategoryTabs() {
+  const el = document.getElementById('categoryTabs');
+  if (state.activeTab !== 'Hawaii') {
+    el.innerHTML = '';
+    el.style.display = 'none';
+    updateAddPlaceBtnLabel();
+    return;
+  }
+  el.style.display = '';
+  el.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn tab-btn-sub' + (state.activeCategory === cat ? ' active' : '');
+    btn.textContent = CATEGORY_CONFIG[cat].label;
+    btn.addEventListener('click', () => {
+      state.activeCategory = cat;
+      state.cuisineFilter = 'all';
+      renderCategoryTabs();
+      populateCuisineFilterSelect();
+      renderList();
+    });
+    el.appendChild(btn);
+  });
+  updateAddPlaceBtnLabel();
+}
+
+function activeCategory() {
+  return state.activeTab === 'Hawaii' ? state.activeCategory : 'eats';
+}
+
+function updateAddPlaceBtnLabel() {
+  document.getElementById('addPlaceBtn').textContent = `+ Add ${CATEGORY_CONFIG[activeCategory()].singular}`;
 }
 
 // ---------- List rendering ----------
 function getFilteredSorted() {
-  let list = places.filter(p => p.country === state.activeTab);
+  let list = places.filter(p => p.country === state.activeTab && (p.category || 'eats') === activeCategory());
 
   if (state.cuisineFilter !== 'all') {
     list = list.filter(p => p.cuisine === state.cuisineFilter);
@@ -190,8 +255,19 @@ function getFilteredSorted() {
     );
   }
 
-  list.sort((a, b) => a.name.localeCompare(b.name));
-  if (state.sort === 'za') list.reverse();
+  if (state.sort === 'best' || state.sort === 'worst') {
+    list.sort((a, b) => {
+      const avgA = averageRating(a.memories);
+      const avgB = averageRating(b.memories);
+      if (avgA === null && avgB === null) return a.name.localeCompare(b.name);
+      if (avgA === null) return 1;
+      if (avgB === null) return -1;
+      return state.sort === 'best' ? avgB - avgA : avgA - avgB;
+    });
+  } else {
+    list.sort((a, b) => a.name.localeCompare(b.name));
+    if (state.sort === 'za') list.reverse();
+  }
 
   return list;
 }
@@ -207,11 +283,30 @@ function groupByLetter(list) {
   return groups;
 }
 
+const CATEGORY_DEFAULT_EMOJI = { eats: '🍽️', beaches: '🏖️', hikes: '🥾' };
+
 function placeThumb(place) {
   if (place.photos && place.photos.length > 0) {
     return `<img src="${place.photos[0]}" alt="">`;
   }
-  return '🍽️';
+  return CATEGORY_DEFAULT_EMOJI[place.category || 'eats'];
+}
+
+function placeCardHtml(p, rank) {
+  const avg = averageRating(p.memories);
+  return `
+    <div class="place-card" data-id="${p.id}">
+      ${rank ? `<div class="rank-badge">#${rank}</div>` : ''}
+      <div class="place-thumb">${placeThumb(p)}</div>
+      <div class="place-info">
+        <h3>${escapeHtml(p.name)} ${avg ? `<span class="card-rating">★ ${avg}</span>` : ''}</h3>
+        ${p.cuisine ? `<span class="cuisine-badge">${escapeHtml(p.cuisine)}</span>` : ''}
+        ${p.distance ? `<span class="cuisine-badge">🥾 ${escapeHtml(p.distance)}</span>` : ''}
+        ${p.notes ? `<div class="meta"><span class="meta-label">Notes:</span> ${escapeHtml(truncate(p.notes, 60))}</div>` : ''}
+      </div>
+      ${p.photos && p.photos.length ? `<div class="photo-badge">📷 ${p.photos.length}</div>` : ''}
+    </div>
+  `;
 }
 
 function renderList() {
@@ -226,40 +321,38 @@ function renderList() {
 
   const list = getFilteredSorted();
 
-  countLine.textContent = `${list.length} place${list.length === 1 ? '' : 's'} in ${state.activeTab}`;
+  const scopeLabel = state.activeTab === 'Hawaii' ? `Hawaii ${CATEGORY_CONFIG[activeCategory()].label.replace(/^\S+\s/, '')}` : state.activeTab;
+  countLine.textContent = `${list.length} place${list.length === 1 ? '' : 's'} in ${scopeLabel}`;
 
   if (list.length === 0) {
-    container.innerHTML = `<div class="empty-state">No places yet. Tap "+ Add a Place" to start the ${state.activeTab} list!</div>`;
+    container.innerHTML = `<div class="empty-state">No places yet. Tap "+ Add a Place" to start the ${scopeLabel} list!</div>`;
     return;
   }
 
-  const groups = groupByLetter(list);
-  const letters = Object.keys(groups).sort((a, b) => {
-    if (state.sort === 'za') return b.localeCompare(a);
-    return a.localeCompare(b);
-  });
+  if (state.sort === 'best' || state.sort === 'worst') {
+    container.innerHTML = `
+      <section class="letter-section">
+        <div class="grid">
+          ${list.map((p, i) => placeCardHtml(p, i + 1)).join('')}
+        </div>
+      </section>
+    `;
+  } else {
+    const groups = groupByLetter(list);
+    const letters = Object.keys(groups).sort((a, b) => {
+      if (state.sort === 'za') return b.localeCompare(a);
+      return a.localeCompare(b);
+    });
 
-  container.innerHTML = letters.map(letter => `
-    <section class="letter-section">
-      <div class="letter-heading">${letter}</div>
-      <div class="grid">
-        ${groups[letter].map(p => {
-          const avg = averageRating(p.memories);
-          return `
-          <div class="place-card" data-id="${p.id}">
-            <div class="place-thumb">${placeThumb(p)}</div>
-            <div class="place-info">
-              <h3>${escapeHtml(p.name)} ${avg ? `<span class="card-rating">★ ${avg}</span>` : ''}</h3>
-              ${p.cuisine ? `<span class="cuisine-badge">${escapeHtml(p.cuisine)}</span>` : ''}
-              ${p.notes ? `<div class="meta"><span class="meta-label">Notes:</span> ${escapeHtml(truncate(p.notes, 60))}</div>` : ''}
-            </div>
-            ${p.photos && p.photos.length ? `<div class="photo-badge">📷 ${p.photos.length}</div>` : ''}
-          </div>
-        `;
-        }).join('')}
-      </div>
-    </section>
-  `).join('');
+    container.innerHTML = letters.map(letter => `
+      <section class="letter-section">
+        <div class="letter-heading">${letter}</div>
+        <div class="grid">
+          ${groups[letter].map(p => placeCardHtml(p)).join('')}
+        </div>
+      </section>
+    `).join('');
+  }
 
   container.querySelectorAll('.place-card').forEach(card => {
     card.addEventListener('click', () => openViewModal(card.dataset.id));
@@ -291,17 +384,20 @@ function averageRating(memories) {
   return (sum / memories.length).toFixed(1);
 }
 
-// ---------- Cuisine filter ----------
-function populateCuisineFilter() {
+// ---------- Cuisine/type filter ----------
+function populateCuisineFilterSelect() {
   const select = document.getElementById('cuisineFilterSelect');
-  select.innerHTML = `<option value="all">All Cuisines</option>` +
-    CUISINES.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  const options = CATEGORY_CONFIG[activeCategory()].tagOptions;
+  select.innerHTML = `<option value="all">All</option>` +
+    options.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
 }
 
 // ---------- Leaderboard ----------
 // Scoring: +2 points for adding a new place, +1 point for posting a memory (rating).
-// Likes/dislikes on memories do NOT affect points.
-function computeLeaderboard() {
+// Likes/dislikes on memories do NOT affect points. Spending in the Shop
+// subtracts from this balance, so the leaderboard always shows what each
+// person currently has available to spend.
+function computeRawPointsStats() {
   const stats = {};
   function ensure(name, color) {
     const key = normalizeName(name);
@@ -328,15 +424,30 @@ function computeLeaderboard() {
     });
   });
 
-  return Object.values(stats)
-    .map(s => ({ ...s, avg: s.memoriesCount ? (s.ratingSum / s.memoriesCount).toFixed(1) : null }))
-    .sort((a, b) => b.points - a.points || b.memoriesCount - a.memoriesCount);
+  return stats;
 }
 
-function getEarnedPoints(name) {
-  const key = normalizeName(name);
-  const entry = computeLeaderboard().find(c => normalizeName(c.name) === key);
+function getRawPoints(name) {
+  const stats = computeRawPointsStats();
+  const entry = stats[normalizeName(name)];
   return entry ? entry.points : 0;
+}
+
+function computeLeaderboard() {
+  const stats = computeRawPointsStats();
+  return Object.values(stats)
+    .map(s => {
+      const profile = profiles[normalizeName(s.name)];
+      const spent = profile?.spentPoints || 0;
+      return {
+        ...s,
+        rawPoints: s.points,
+        spent,
+        points: s.points - spent,
+        avg: s.memoriesCount ? (s.ratingSum / s.memoriesCount).toFixed(1) : null,
+      };
+    })
+    .sort((a, b) => b.points - a.points || b.memoriesCount - a.memoriesCount);
 }
 
 function getProfile(name) {
@@ -358,17 +469,25 @@ function openLeaderboard() {
   modal.innerHTML = `
     <button class="modal-close" id="leaderboardCloseBtn">✕</button>
     <h2>🏆 Top Contributors</h2>
-    <p class="leaderboard-legend">+2 pts for adding a place · +1 pt for each memory you post</p>
+    <p class="leaderboard-legend">+2 pts for adding a place · +1 pt for each memory you post · Shop purchases subtract from your balance</p>
     ${data.length ? `
       <div class="leaderboard-list">
-        ${data.map((c, i) => `
-          <div class="leaderboard-row">
+        ${data.map((c, i) => {
+          const profile = profiles[normalizeName(c.name)];
+          const skin = profile?.equippedSkin ? SHOP_SKINS.find(s => s.id === profile.equippedSkin) : null;
+          const rowBg = skin ? `background:${skinBackgroundCss(skin)};` : '';
+          const icon = profile?.equippedIcon ? SHOP_ICONS.find(s => s.id === profile.equippedIcon)?.emoji : null;
+          const colorItem = profile?.equippedColor ? SHOP_COLORS.find(s => s.id === profile.equippedColor) : null;
+          const avatarBg = colorItem ? colorItem.hex : c.color;
+          return `
+          <div class="leaderboard-row" style="${rowBg}">
             <span class="leaderboard-rank">${medals[i] || (i + 1) + '.'}</span>
-            <span class="leaderboard-avatar" style="background:${escapeHtml(c.color)}">${escapeHtml((c.name[0] || '?').toUpperCase())}</span>
+            <span class="leaderboard-avatar" style="background:${escapeHtml(avatarBg)}">${icon || escapeHtml((c.name[0] || '?').toUpperCase())}</span>
             <span class="leaderboard-name">${authorBadgeHtml(c.name)}</span>
             <span class="leaderboard-stats">${c.points} pts<br>${c.placesAdded} place${c.placesAdded === 1 ? '' : 's'} · ${c.memoriesCount} memor${c.memoriesCount === 1 ? 'y' : 'ies'}</span>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>` : `<p class="no-memories">No points yet — add a place or post a memory to get on the board!</p>`}
   `;
   document.getElementById('leaderboardCloseBtn').addEventListener('click', closeLeaderboard);
@@ -383,32 +502,46 @@ function closeLeaderboard() {
 function shopItemPreview(category, item) {
   if (category === 'icon') return `<span class="shop-preview shop-preview-icon">${item.emoji}</span>`;
   if (category === 'color') return `<span class="shop-preview shop-preview-color" style="background:${item.hex}"></span>`;
-  return `<span class="shop-preview shop-preview-skin" style="background:${item.css}"></span>`;
+  return `<span class="shop-preview shop-preview-skin" style="background:${skinBackgroundCss(item)}"></span>`;
 }
 
 function shopItemLabel(category, item) {
-  if (category === 'icon') return item.emoji;
   return item.label;
+}
+
+function renderShopPreviewBubble(profile) {
+  const icon = profile?.equippedIcon ? SHOP_ICONS.find(i => i.id === profile.equippedIcon)?.emoji : '';
+  const colorItem = profile?.equippedColor ? SHOP_COLORS.find(c => c.id === profile.equippedColor) : null;
+  const skin = profile?.equippedSkin ? SHOP_SKINS.find(s => s.id === profile.equippedSkin) : null;
+  const bg = skin ? skinBackgroundCss(skin) : BUBBLE_COLORS[0];
+  const nameStyle = colorItem ? ` style="color:${colorItem.hex}"` : '';
+  return `
+    <div class="memory-bubble shop-live-preview" style="background:${bg}">
+      <div class="memory-card-top">
+        <span class="memory-author"><span class="author-badge"${nameStyle}>${icon ? icon + ' ' : ''}You</span></span>
+        ${renderStarsDisplay(5)}
+      </div>
+      <p class="memory-text">This is what your memory will look like!</p>
+    </div>
+  `;
 }
 
 function openShop() {
   const name = getSavedAuthorName();
   const profile = name ? getProfile(name) : null;
-  const earned = name ? getEarnedPoints(name) : 0;
-  const spent = profile?.spentPoints || 0;
-  const available = earned - spent;
+  const available = name ? (getRawPoints(name) - (profile?.spentPoints || 0)) : 0;
 
   const sections = [
     { category: 'icon', title: '⚽ Icons', items: SHOP_ICONS },
     { category: 'color', title: '🎨 Name Colors', items: SHOP_COLORS },
-    { category: 'skin', title: '✨ Memory Skins (15 pts each)', items: SHOP_SKINS },
+    { category: 'skin', title: '✨ Memory Skins', items: SHOP_SKINS },
   ];
 
   const modal = document.getElementById('shopModal');
   modal.innerHTML = `
     <button class="modal-close" id="shopCloseBtn">✕</button>
     <h2>🛍️ Shop</h2>
-    <p class="leaderboard-legend">Spend the points you've earned on the leaderboard for icons, name colors, and memory bubble skins.</p>
+    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Memory skins ${SKIN_COST} pts</p>
 
     <div class="shop-name-field">
       <label>Who are you?</label>
@@ -418,9 +551,17 @@ function openShop() {
     ${name ? `<p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>`
       : `<p class="hint">Type your name above to see your balance and start shopping.</p>`}
 
+    <h3 class="shop-section-title">👀 Live Preview</h3>
+    ${renderShopPreviewBubble(profile)}
+
     ${sections.map(section => `
       <h3 class="shop-section-title">${section.title}</h3>
       <div class="shop-grid">
+        <div class="shop-item">
+          <span class="shop-preview shop-preview-none">🚫</span>
+          <span class="shop-item-label">None</span>
+          ${name ? `<button type="button" class="btn-shop-item ${!profile?.[EQUIP_FIELD[section.category]] ? 'shop-equipped' : 'shop-equip-btn'}" data-category="${section.category}" data-id="" ${!profile?.[EQUIP_FIELD[section.category]] ? 'disabled' : ''}>${!profile?.[EQUIP_FIELD[section.category]] ? '✓ Default' : 'Use Default'}</button>` : `<button type="button" class="btn-shop-item" disabled>Default</button>`}
+        </div>
         ${section.items.map(item => {
           const owned = profile?.unlocked?.includes(item.id);
           const equipped = profile?.[EQUIP_FIELD[section.category]] === item.id;
@@ -456,7 +597,7 @@ function openShop() {
     btn.addEventListener('click', () => buyItem(name, btn.dataset.category, btn.dataset.id, Number(btn.dataset.cost)));
   });
   modal.querySelectorAll('.shop-equip-btn').forEach(btn => {
-    btn.addEventListener('click', () => equipItem(name, btn.dataset.category, btn.dataset.id));
+    btn.addEventListener('click', () => equipItem(name, btn.dataset.category, btn.dataset.id || null));
   });
 
   document.getElementById('shopOverlay').classList.remove('hidden');
@@ -470,7 +611,7 @@ async function buyItem(name, category, itemId, cost) {
   if (!name) return;
   const key = normalizeName(name);
   const profile = getProfile(name) || { spentPoints: 0, unlocked: [] };
-  const available = getEarnedPoints(name) - (profile.spentPoints || 0);
+  const available = getRawPoints(name) - (profile.spentPoints || 0);
   if (available < cost) {
     alert("You don't have enough points for that yet!");
     return;
@@ -496,8 +637,7 @@ async function equipItem(name, category, itemId) {
   if (!name) return;
   const key = normalizeName(name);
   const profile = getProfile(name) || { spentPoints: 0, unlocked: [] };
-  const currentlyEquipped = profile[EQUIP_FIELD[category]] === itemId;
-  const updates = { displayName: name, [EQUIP_FIELD[category]]: currentlyEquipped ? null : itemId };
+  const updates = { displayName: name, [EQUIP_FIELD[category]]: itemId || null };
   try {
     await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
     profiles[key] = { ...profile, ...updates };
@@ -640,6 +780,7 @@ function renderRandomizerPick(pool) {
       ${place.photos && place.photos.length ? `<img class="randomizer-photo" src="${place.photos[0]}" alt="">` : ''}
       <h2>${escapeHtml(place.name)}</h2>
       ${place.cuisine ? `<span class="cuisine-badge">${escapeHtml(place.cuisine)}</span>` : ''}
+      ${place.distance ? `<span class="cuisine-badge">🥾 ${escapeHtml(place.distance)}</span>` : ''}
       ${avg ? `<div class="card-rating">★ ${avg}</div>` : ''}
       ${place.location ? `<p class="randomizer-location">📍 ${escapeHtml(place.location)}</p>` : ''}
     </div>
@@ -813,6 +954,7 @@ function openViewModal(id) {
     <button class="modal-close" id="viewCloseBtn">✕</button>
     <h2>${escapeHtml(place.name)}</h2>
     ${place.cuisine ? `<span class="cuisine-badge">${escapeHtml(place.cuisine)}</span>` : ''}
+    ${place.distance ? `<span class="cuisine-badge">🥾 ${escapeHtml(place.distance)}</span>` : ''}
 
     ${place.location ? `
       <div class="field">
@@ -847,7 +989,7 @@ function openViewModal(id) {
           const reaction = getReaction(m.id);
           const equippedSkinId = getProfile(m.author)?.equippedSkin;
           const skin = SHOP_SKINS.find(s => s.id === equippedSkinId);
-          const bubbleBg = skin ? skin.css : (m.color || BUBBLE_COLORS[0]);
+          const bubbleBg = skin ? skinBackgroundCss(skin) : (m.color || BUBBLE_COLORS[0]);
           return `
           <div class="memory-bubble ${isTop ? 'memory-bubble-top' : ''}" style="background:${bubbleBg}">
             <div class="memory-card-top">
@@ -1106,24 +1248,36 @@ function closeLightbox() {
 }
 
 // ---------- Add/Edit form ----------
-function populateCuisineSelect(selected) {
+function populateCuisineSelect(selected, category) {
   const select = document.getElementById('fCuisine');
-  select.innerHTML = CUISINES.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  const options = CATEGORY_CONFIG[category].tagOptions;
+  select.innerHTML = options.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
   select.value = selected || 'Other';
 }
 
 function openFormModal(id) {
   const place = id ? places.find(p => p.id === id) : null;
   const placeId = place ? place.id : uid();
+  const category = place ? (place.category || 'eats') : activeCategory();
+  const config = CATEGORY_CONFIG[category];
 
-  document.getElementById('formTitle').textContent = place ? 'Edit Place' : 'Add a Place';
+  document.getElementById('formTitle').textContent = place ? 'Edit Place' : `Add ${config.singular}`;
   document.getElementById('placeId').value = placeId;
   document.getElementById('fName').value = place ? place.name : '';
-  populateCuisineSelect(place ? place.cuisine : 'Other');
+  document.getElementById('fCuisineLabel').textContent = config.tagLabel;
+  populateCuisineSelect(place ? place.cuisine : 'Other', category);
   document.getElementById('fLocation').value = place ? place.location : '';
   document.getElementById('fWebsite').value = place ? place.website : '';
   document.getElementById('addressHint').textContent = '';
   document.getElementById('deletePlaceBtn').style.display = place ? 'inline-block' : 'none';
+
+  const distanceField = document.getElementById('fDistanceField');
+  if (config.hasDistance) {
+    distanceField.style.display = '';
+    document.getElementById('fDistance').value = place ? (place.distance || '') : '';
+  } else {
+    distanceField.style.display = 'none';
+  }
 
   const authorField = document.getElementById('fAuthorField');
   if (place) {
@@ -1168,8 +1322,14 @@ async function handleFormSubmit(e) {
     website: document.getElementById('fWebsite').value.trim(),
   };
 
+  const category = isNewPlace ? activeCategory() : (places.find(p => p.id === id)?.category || 'eats');
+  if (CATEGORY_CONFIG[category].hasDistance) {
+    data.distance = document.getElementById('fDistance').value.trim();
+  }
+
   if (isNewPlace) {
     data.createdAt = Date.now();
+    data.category = category;
     const author = document.getElementById('fAuthor').value.trim();
     if (author) {
       data.addedBy = author;
@@ -1297,7 +1457,7 @@ document.getElementById('shopOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'shopOverlay') closeShop();
 });
 
-populateCuisineFilter();
+populateCuisineFilterSelect();
 renderTabs();
 renderList();
 ensureSeeded().finally(subscribeToPlaces);
