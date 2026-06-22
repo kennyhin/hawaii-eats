@@ -10,10 +10,10 @@
 // These values are NOT secret — they're meant to be public in client code.
 // Access control is enforced separately by Firestore/Storage security rules.
 export const firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY",
-  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
-  projectId: "PASTE_YOUR_PROJECT_ID",
-  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
-  messagingSenderId: "PASTE_YOUR_SENDER_ID",
-  appId: "PASTE_YOUR_APP_ID",
+  apiKey: "AIzaSyC4vDQvofTrIkpzFnG4okoCPktPEKAHtRg",
+  authDomain: "hawaii-eats.firebaseapp.com",
+  projectId: "hawaii-eats",
+  storageBucket: "hawaii-eats.firebasestorage.app",
+  messagingSenderId: "214007700468",
+  appId: "1:214007700468:web:975a1a2b3cba12b5d737a1",
 };
