@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622l') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622n') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1050,9 +1050,9 @@ const MATCH_WINS_NEEDED = 2;
 const TENNIS_HAND_KEY = 'food_memory_album_tennis_hand';
 const TENNIS_DIFFICULTY_KEY = 'food_memory_album_tennis_difficulty';
 const TENNIS_DIFFICULTY_CONFIG = {
-  easy: { label: 'Easy', emoji: '🟢', cpuSpeed: 2.2, randomness: 55, winPoints: 5 },
-  medium: { label: 'Medium', emoji: '🟡', cpuSpeed: 3.5, randomness: 30, winPoints: 10 },
-  hard: { label: 'Hard', emoji: '🔴', cpuSpeed: 5.5, randomness: 10, winPoints: 20 },
+  easy: { label: 'Easy', emoji: '🟢', cpuSpeed: 2.2, randomness: 55, winPoints: 3 },
+  medium: { label: 'Medium', emoji: '🟡', cpuSpeed: 3.5, randomness: 30, winPoints: 5 },
+  hard: { label: 'Hard', emoji: '🔴', cpuSpeed: 5.5, randomness: 10, winPoints: 8 },
 };
 
 function getSavedHandedness() {
@@ -1378,7 +1378,12 @@ async function endGameMatch(playerWon) {
   const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
 
   if (playerWon) {
-    const credits = [...(profile.credits || []), { points: gameState.winPoints, reason: 'won a Tennis series', source: 'game', awardedAt: Date.now() }];
+    // The entry fee was already deducted via spentPoints when the series
+    // started, so refund it plus the net prize — otherwise a win nets 0.
+    // displayPoints keeps the activity feed showing the advertised net prize
+    // (e.g. "+5") while `points` carries the real ledger amount (e.g. 10).
+    const payout = GAME_ENTRY_COST + gameState.winPoints;
+    const credits = [...(profile.credits || []), { points: payout, displayPoints: gameState.winPoints, reason: 'won a Tennis series', source: 'game', gameType: 'tennis', awardedAt: Date.now() }];
     const updates = { displayName: name, credits };
     try {
       await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
@@ -1407,6 +1412,342 @@ async function endGameMatch(playerWon) {
   document.getElementById('gameCloseBtn').addEventListener('click', closeGame);
   document.getElementById('gameDoneBtn').addEventListener('click', closeGame);
   document.getElementById('gamePlayAgainBtn').addEventListener('click', () => openGame());
+}
+
+// ---------- Blackjack mini-game ----------
+// Standard casino-style rules: dealer hits to 17, natural blackjack pays
+// 3:2, regular win pays 1:1, push returns the bet. Hit/Stand/Double Down
+// only (no split). Wager is escrowed via spentPoints when the hand is
+// dealt, same pattern as the Tennis entry fee.
+const BLACKJACK_ALLOWED_NAMES = ['bdl', 'yee ma', 'kenny', 'ma ma'];
+const BLACKJACK_MIN_BET = 5;
+const BLACKJACK_MAX_BET = 200;
+const BLACKJACK_SUITS = ['♠', '♥', '♦', '♣'];
+const BLACKJACK_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+function isBlackjackAllowed(name) {
+  return BLACKJACK_ALLOWED_NAMES.includes(normalizeName(name));
+}
+
+let blackjackState = null;
+
+function openBlackjack() {
+  closeBlackjackHandIfIdle();
+  const name = getSavedAuthorName();
+  const profile = name ? getProfile(name) : null;
+  const available = name ? (getRawPoints(name) - (profile?.spentPoints || 0)) : 0;
+  const allowed = name && isBlackjackAllowed(name);
+
+  const modal = document.getElementById('blackjackModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="blackjackCloseBtn">✕</button>
+    <h2>🃏 Blackjack</h2>
+    <div class="shop-name-field">
+      <label>Who's playing?</label>
+      <input type="text" id="bjNameInput" placeholder="Your name" value="${escapeHtml(name)}">
+    </div>
+    ${!name ? `
+      <p class="hint">Type your name above to play.</p>
+    ` : !allowed ? `
+      <div class="bj-locked">
+        <div class="bj-locked-emoji">🔒</div>
+        <p>You must be 21 to play this game.</p>
+      </div>
+    ` : `
+      <p class="hint">Standard casino rules — dealer hits to 17. Blackjack pays 3:2, a regular win pays 1:1, a push returns your bet. Wager ${BLACKJACK_MIN_BET}–${BLACKJACK_MAX_BET} pts.</p>
+      <div class="shop-name-field">
+        <label>Wager (pts)</label>
+        <input type="number" id="bjWagerInput" min="${BLACKJACK_MIN_BET}" max="${Math.min(BLACKJACK_MAX_BET, available)}" step="1" value="${Math.min(BLACKJACK_MIN_BET, available)}">
+      </div>
+      <p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="bjDealBtn" ${available < BLACKJACK_MIN_BET ? 'disabled' : ''}>🃏 Deal</button>
+      </div>
+    `}
+  `;
+  document.getElementById('blackjackCloseBtn').addEventListener('click', closeBlackjack);
+  document.getElementById('bjNameInput').addEventListener('change', (e) => {
+    saveAuthorName(e.target.value.trim());
+    openBlackjack();
+  });
+  const dealBtn = document.getElementById('bjDealBtn');
+  if (dealBtn) {
+    dealBtn.addEventListener('click', () => {
+      const wagerInput = document.getElementById('bjWagerInput');
+      const wager = Math.round(Number(wagerInput.value));
+      startBlackjackHand(document.getElementById('bjNameInput').value.trim(), wager, available);
+    });
+  }
+  document.getElementById('blackjackOverlay').classList.remove('hidden');
+}
+
+function closeBlackjackHandIfIdle() {
+  if (!blackjackState || !blackjackState.active) blackjackState = null;
+}
+
+function closeBlackjack() {
+  if (blackjackState && blackjackState.active) {
+    if (!confirm('Leave the hand? Your wager will be lost.')) return;
+  }
+  blackjackState = null;
+  document.getElementById('blackjackOverlay').classList.add('hidden');
+}
+
+function buildShuffledDeck() {
+  const deck = [];
+  BLACKJACK_SUITS.forEach(suit => {
+    BLACKJACK_RANKS.forEach(rank => deck.push({ rank, suit }));
+  });
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+
+function cardValue(card) {
+  if (card.rank === 'A') return 11;
+  if (card.rank === 'J' || card.rank === 'Q' || card.rank === 'K') return 10;
+  return Number(card.rank);
+}
+
+function handValue(cards) {
+  let total = cards.reduce((sum, c) => sum + cardValue(c), 0);
+  let aces = cards.filter(c => c.rank === 'A').length;
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces -= 1;
+  }
+  return total;
+}
+
+function isBlackjackHand(cards) {
+  return cards.length === 2 && handValue(cards) === 21;
+}
+
+async function startBlackjackHand(name, wager, available) {
+  if (!name || !isBlackjackAllowed(name)) return;
+  if (!Number.isFinite(wager) || wager < BLACKJACK_MIN_BET || wager > Math.min(BLACKJACK_MAX_BET, available)) {
+    alert(`Wager must be between ${BLACKJACK_MIN_BET} and ${Math.min(BLACKJACK_MAX_BET, available)} pts.`);
+    return;
+  }
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+  const updates = { displayName: name, spentPoints: (profile.spentPoints || 0) + wager };
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+    saveAuthorName(name);
+  } catch (err) {
+    console.error(err);
+    alert('Could not start the hand — check your internet connection and try again.');
+    return;
+  }
+
+  const deck = buildShuffledDeck();
+  blackjackState = {
+    name,
+    deck,
+    playerHand: [deck.pop(), deck.pop()],
+    dealerHand: [deck.pop(), deck.pop()],
+    wager,
+    canDouble: true,
+    active: true,
+    revealed: false,
+  };
+
+  if (isBlackjackHand(blackjackState.playerHand)) {
+    blackjackState.revealed = true;
+    finishBlackjackHand();
+    return;
+  }
+
+  renderBlackjackHand();
+}
+
+function bjCardHtml(card, hidden) {
+  if (hidden) return `<div class="bj-card bj-card-hidden">🂠</div>`;
+  const isRed = card.suit === '♥' || card.suit === '♦';
+  return `<div class="bj-card ${isRed ? 'bj-card-red' : ''}">${card.rank}${card.suit}</div>`;
+}
+
+function renderBlackjackHand() {
+  const g = blackjackState;
+  const modal = document.getElementById('blackjackModal');
+  const dealerTotalDisplay = g.revealed ? handValue(g.dealerHand) : '?';
+  const canDouble = g.canDouble && g.playerHand.length === 2;
+
+  modal.innerHTML = `
+    <button class="modal-close" id="blackjackCloseBtn">✕</button>
+    <h2>🃏 Blackjack</h2>
+    <div class="bj-table">
+      <div class="bj-row">
+        <div class="bj-row-label">Dealer <span class="bj-total">${dealerTotalDisplay}</span></div>
+        <div class="bj-hand">
+          ${g.dealerHand.map((c, i) => bjCardHtml(c, !g.revealed && i === 1)).join('')}
+        </div>
+      </div>
+      <div class="bj-row">
+        <div class="bj-row-label">You <span class="bj-total">${handValue(g.playerHand)}</span></div>
+        <div class="bj-hand">
+          ${g.playerHand.map(c => bjCardHtml(c, false)).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="bj-wager-line">Wager: <strong>${g.wager}</strong> pts</div>
+    <div class="bj-actions">
+      <button type="button" class="btn btn-primary" id="bjHitBtn">Hit</button>
+      <button type="button" class="btn btn-secondary" id="bjStandBtn">Stand</button>
+      ${canDouble ? `<button type="button" class="btn btn-secondary" id="bjDoubleBtn">Double Down (-${g.wager} pts)</button>` : ''}
+    </div>
+  `;
+  document.getElementById('blackjackCloseBtn').addEventListener('click', closeBlackjack);
+  document.getElementById('bjHitBtn').addEventListener('click', hitBlackjack);
+  document.getElementById('bjStandBtn').addEventListener('click', standBlackjack);
+  const doubleBtn = document.getElementById('bjDoubleBtn');
+  if (doubleBtn) doubleBtn.addEventListener('click', doubleDownBlackjack);
+}
+
+function hitBlackjack() {
+  const g = blackjackState;
+  g.playerHand.push(g.deck.pop());
+  g.canDouble = false;
+  if (handValue(g.playerHand) > 21) {
+    g.revealed = true;
+    finishBlackjackHand();
+    return;
+  }
+  renderBlackjackHand();
+}
+
+async function doubleDownBlackjack() {
+  const g = blackjackState;
+  const name = g.name;
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+  const available = getRawPoints(name) - (profile.spentPoints || 0);
+  if (available < g.wager) {
+    alert("You don't have enough points to double down!");
+    return;
+  }
+  const key = normalizeName(name);
+  const updates = { displayName: name, spentPoints: (profile.spentPoints || 0) + g.wager };
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+  } catch (err) {
+    console.error(err);
+    alert('Could not double down — check your internet connection and try again.');
+    return;
+  }
+  g.wager *= 2;
+  g.canDouble = false;
+  g.playerHand.push(g.deck.pop());
+  if (handValue(g.playerHand) > 21) {
+    g.revealed = true;
+    finishBlackjackHand();
+    return;
+  }
+  standBlackjack();
+}
+
+function standBlackjack() {
+  const g = blackjackState;
+  g.revealed = true;
+  while (handValue(g.dealerHand) < 17) {
+    g.dealerHand.push(g.deck.pop());
+  }
+  finishBlackjackHand();
+}
+
+function resolveBlackjackOutcome(playerHand, dealerHand, wager) {
+  const playerTotal = handValue(playerHand);
+  const dealerTotal = handValue(dealerHand);
+  const playerBJ = isBlackjackHand(playerHand);
+  const dealerBJ = isBlackjackHand(dealerHand);
+
+  if (playerTotal > 21) return { outcome: 'bust', payout: 0 };
+  if (playerBJ || dealerBJ) {
+    if (playerBJ && dealerBJ) return { outcome: 'push', payout: wager };
+    if (playerBJ) return { outcome: 'blackjack', payout: wager + Math.round(wager * 1.5) };
+    return { outcome: 'lose', payout: 0 };
+  }
+  if (dealerTotal > 21) return { outcome: 'dealer_bust', payout: wager * 2 };
+  if (playerTotal > dealerTotal) return { outcome: 'win', payout: wager * 2 };
+  if (playerTotal === dealerTotal) return { outcome: 'push', payout: wager };
+  return { outcome: 'lose', payout: 0 };
+}
+
+function blackjackReasonText(outcome) {
+  switch (outcome) {
+    case 'blackjack': return 'hit Blackjack! 🃏 (3:2 payout)';
+    case 'win': case 'dealer_bust': return 'won a hand of Blackjack';
+    case 'push': return 'pushed on Blackjack (bet returned)';
+    default: return 'played Blackjack';
+  }
+}
+
+async function finishBlackjackHand() {
+  const g = blackjackState;
+  g.active = false;
+  const { outcome, payout } = resolveBlackjackOutcome(g.playerHand, g.dealerHand, g.wager);
+  const netPoints = payout - g.wager;
+  const name = g.name;
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+
+  if (payout > 0) {
+    const credits = [...(profile.credits || []), { points: payout, displayPoints: netPoints, reason: blackjackReasonText(outcome), source: 'game', gameType: 'blackjack', awardedAt: Date.now() }];
+    const updates = { displayName: name, credits };
+    try {
+      await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+      profiles[key] = { ...profile, ...updates };
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  renderActivityFeed();
+  renderList();
+  renderBlackjackResult(outcome, netPoints, g.wager);
+}
+
+function renderBlackjackResult(outcome, netPoints, wager) {
+  const g = blackjackState;
+  const copy = {
+    blackjack: { emoji: '🃏', title: 'Blackjack!', detail: `+${netPoints} pts awarded (3:2 payout)!` },
+    win: { emoji: '🏆', title: 'You won this hand!', detail: `+${netPoints} pts awarded!` },
+    dealer_bust: { emoji: '🏆', title: 'Dealer busts — you win!', detail: `+${netPoints} pts awarded!` },
+    push: { emoji: '🤝', title: "Push — it's a tie.", detail: `Your ${wager} pt wager was returned.` },
+    bust: { emoji: '😢', title: 'You busted.', detail: `Your ${wager} pt wager is gone — try again?` },
+    lose: { emoji: '😢', title: 'The dealer wins this hand.', detail: `Your ${wager} pt wager is gone — try again?` },
+  }[outcome];
+
+  const modal = document.getElementById('blackjackModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="blackjackCloseBtn">✕</button>
+    <div class="bj-table">
+      <div class="bj-row">
+        <div class="bj-row-label">Dealer <span class="bj-total">${handValue(g.dealerHand)}</span></div>
+        <div class="bj-hand">${g.dealerHand.map(c => bjCardHtml(c, false)).join('')}</div>
+      </div>
+      <div class="bj-row">
+        <div class="bj-row-label">You <span class="bj-total">${handValue(g.playerHand)}</span></div>
+        <div class="bj-hand">${g.playerHand.map(c => bjCardHtml(c, false)).join('')}</div>
+      </div>
+    </div>
+    <div class="randomizer-result">
+      <div class="randomizer-dice">${copy.emoji}</div>
+      <h2>${copy.title}</h2>
+      <p class="hint">${copy.detail}</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="bjPlayAgainBtn">🃏 Play Again</button>
+      <button type="button" class="btn btn-secondary" id="bjDoneBtn">Close</button>
+    </div>
+  `;
+  document.getElementById('blackjackCloseBtn').addEventListener('click', closeBlackjack);
+  document.getElementById('bjDoneBtn').addEventListener('click', closeBlackjack);
+  document.getElementById('bjPlayAgainBtn').addEventListener('click', () => openBlackjack());
 }
 
 // ---------- Activity feed ----------
@@ -1468,11 +1809,12 @@ function computeActivityFeed(limit = 8) {
 
   Object.values(profiles).forEach(profile => {
     (profile.credits || []).forEach(credit => {
+      const gameEventType = credit.gameType === 'blackjack' ? 'blackjack_result' : 'game_result';
       events.push({
-        type: credit.source === 'daily' ? 'daily_reward' : (credit.source === 'game' ? 'game_result' : 'moderator_credit'),
+        type: credit.source === 'daily' ? 'daily_reward' : (credit.source === 'game' ? gameEventType : 'moderator_credit'),
         timestamp: credit.awardedAt,
         creditedName: profile.displayName,
-        points: credit.points,
+        points: credit.displayPoints ?? credit.points,
         reason: credit.reason,
       });
     });
@@ -1525,6 +1867,7 @@ function activityText(item) {
     case 'daily_reward':
       return `${authorBadgeHtml(item.creditedName)} claimed their daily reward ${pointsBadge(item.points)}`;
     case 'game_result':
+    case 'blackjack_result':
       return `${authorBadgeHtml(item.creditedName)} ${escapeHtml(item.reason)} ${pointsBadge(item.points)}`;
     case 'site_update':
       return `<strong>New Update:</strong> ${escapeHtml(item.message)}`;
@@ -1534,7 +1877,7 @@ function activityText(item) {
 }
 
 function activityIcon(type) {
-  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', reply_added: '💬', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', site_update: '📢' }[type] || '•';
+  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', reply_added: '💬', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', blackjack_result: '🃏', site_update: '📢' }[type] || '•';
 }
 
 function renderActivityFeed() {
@@ -2326,13 +2669,21 @@ document.getElementById('randomizerBtn').addEventListener('click', () => { close
 document.getElementById('shopBtn').addEventListener('click', () => { closeAppMenu(); openShop(); });
 document.getElementById('moderatorBtn').addEventListener('click', openModerator);
 document.getElementById('gameBtn').addEventListener('click', () => { closeAppMenu(); openGame(); });
+document.getElementById('blackjackBtn').addEventListener('click', () => { closeAppMenu(); openBlackjack(); });
 
 document.getElementById('appMenuBtn').addEventListener('click', (e) => {
   e.stopPropagation();
   document.getElementById('appMenuPanel').classList.toggle('hidden');
 });
+document.getElementById('miniGamesToggleBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('miniGamesSubmenu').classList.toggle('hidden');
+  document.getElementById('miniGamesCaret').classList.toggle('open');
+});
 function closeAppMenu() {
   document.getElementById('appMenuPanel').classList.add('hidden');
+  document.getElementById('miniGamesSubmenu').classList.add('hidden');
+  document.getElementById('miniGamesCaret').classList.remove('open');
 }
 document.addEventListener('click', (e) => {
   const panel = document.getElementById('appMenuPanel');
@@ -2407,6 +2758,9 @@ document.getElementById('moderatorOverlay').addEventListener('click', (e) => {
 });
 document.getElementById('gameOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'gameOverlay') closeGame();
+});
+document.getElementById('blackjackOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'blackjackOverlay') closeBlackjack();
 });
 
 populateCuisineFilterSelect();
