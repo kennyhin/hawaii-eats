@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622q') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622r') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1212,7 +1212,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260622q`;
+    courtImageEl.src = `${courtItem.image}?v=20260622r`;
   }
 
   const modal = document.getElementById('gameModal');
@@ -1814,6 +1814,211 @@ function renderBlackjackResult(outcome, netPoints, wager) {
   }
 }
 
+// ---------- Roulette mini-game ----------
+// Single-zero (European) wheel. Straight-up number pays 35:1, the even-money
+// and dozen bets pay standard casino odds. One bet per spin (no parlays) to
+// keep it simple. The whole game lives on one screen — placing the next bet
+// never leaves the result view, same "stay on screen" pattern as Blackjack.
+const ROULETTE_MIN_BET = 5;
+const ROULETTE_MAX_BET = 200;
+const ROULETTE_RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+const ROULETTE_BETS = [
+  { id: 'red', label: 'Red', payout: 1, check: n => ROULETTE_RED_NUMBERS.has(n) },
+  { id: 'black', label: 'Black', payout: 1, check: n => n !== 0 && !ROULETTE_RED_NUMBERS.has(n) },
+  { id: 'odd', label: 'Odd', payout: 1, check: n => n !== 0 && n % 2 === 1 },
+  { id: 'even', label: 'Even', payout: 1, check: n => n !== 0 && n % 2 === 0 },
+  { id: 'low', label: '1–18', payout: 1, check: n => n >= 1 && n <= 18 },
+  { id: 'high', label: '19–36', payout: 1, check: n => n >= 19 && n <= 36 },
+  { id: 'dozen1', label: '1st 12', payout: 2, check: n => n >= 1 && n <= 12 },
+  { id: 'dozen2', label: '2nd 12', payout: 2, check: n => n >= 13 && n <= 24 },
+  { id: 'dozen3', label: '3rd 12', payout: 2, check: n => n >= 25 && n <= 36 },
+];
+
+function rouletteNumberColor(n) {
+  if (n === 0) return 'green';
+  return ROULETTE_RED_NUMBERS.has(n) ? 'red' : 'black';
+}
+
+let rouletteLastBet = { type: 'red', number: 0 };
+let rouletteLastWager = ROULETTE_MIN_BET;
+
+function openRoulette() {
+  renderRouletteScreen(null);
+  document.getElementById('rouletteGameOverlay').classList.remove('hidden');
+}
+
+function closeRoulette() {
+  document.getElementById('rouletteGameOverlay').classList.add('hidden');
+}
+
+function renderRouletteScreen(lastResult) {
+  const name = getSavedAuthorName();
+  const profile = name ? getProfile(name) : null;
+  const available = name ? (getRawPoints(name) - (profile?.spentPoints || 0)) : 0;
+  const wager = Math.max(ROULETTE_MIN_BET, Math.min(rouletteLastWager, ROULETTE_MAX_BET, available || ROULETTE_MIN_BET));
+  const canPlay = name && available >= ROULETTE_MIN_BET;
+
+  const modal = document.getElementById('rouletteGameModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="rouletteCloseBtn">✕</button>
+    <h2>🎡 Roulette</h2>
+    <div class="shop-name-field">
+      <label>Who's playing?</label>
+      <input type="text" id="rouletteNameInput" placeholder="Your name" value="${escapeHtml(name)}">
+    </div>
+    ${lastResult ? `
+      <div class="roulette-wheel-display">
+        <div class="roulette-result-number is-${lastResult.color}">${lastResult.number}</div>
+        <h2>${lastResult.win ? '🏆 You won!' : '😢 No luck this spin.'}</h2>
+        <p class="hint">${lastResult.win ? `+${lastResult.netPoints} pts awarded!` : `Your ${lastResult.wager} pt wager is gone — try again?`}</p>
+      </div>
+    ` : ''}
+    ${!name ? `
+      <p class="hint">Type your name above to play.</p>
+    ` : `
+      <p class="hint">Single-zero wheel. Straight-up numbers pay 35:1, dozens pay 2:1, everything else pays 1:1. Wager ${ROULETTE_MIN_BET}–${ROULETTE_MAX_BET} pts, one bet per spin.</p>
+      <p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>
+      <div class="shop-name-field">
+        <label>Wager (pts)</label>
+        <input type="number" id="rouletteWagerInput" min="${ROULETTE_MIN_BET}" max="${Math.min(ROULETTE_MAX_BET, available)}" step="1" value="${wager}">
+      </div>
+      <div class="roulette-board" id="rouletteBoard">
+        <div class="roulette-bet-row">
+          ${ROULETTE_BETS.slice(0, 2).map(b => rouletteBetBtnHtml(b)).join('')}
+        </div>
+        <div class="roulette-bet-row">
+          ${ROULETTE_BETS.slice(2, 6).map(b => rouletteBetBtnHtml(b)).join('')}
+        </div>
+        <div class="roulette-bet-row">
+          ${ROULETTE_BETS.slice(6, 9).map(b => rouletteBetBtnHtml(b)).join('')}
+        </div>
+        <div class="roulette-number-row">
+          <button type="button" class="roulette-bet-btn ${rouletteLastBet.type === 'number' ? 'selected' : ''}" id="rouletteNumberBetBtn" data-bet="number">Single Number (35:1)</button>
+          <input type="number" id="rouletteNumberInput" min="0" max="36" step="1" value="${rouletteLastBet.number}">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="rouletteSpinBtn" ${canPlay ? '' : 'disabled'}>🎡 Spin</button>
+        <button type="button" class="btn btn-secondary" id="rouletteDoneBtn">Close</button>
+      </div>
+      ${!canPlay ? `<p class="hint">You don't have enough points to play.</p>` : ''}
+    `}
+  `;
+  document.getElementById('rouletteCloseBtn').addEventListener('click', closeRoulette);
+  document.getElementById('rouletteNameInput').addEventListener('change', (e) => {
+    saveAuthorName(e.target.value.trim());
+    renderRouletteScreen(lastResult);
+  });
+  const doneBtn = document.getElementById('rouletteDoneBtn');
+  if (doneBtn) doneBtn.addEventListener('click', closeRoulette);
+  const board = document.getElementById('rouletteBoard');
+  if (board) {
+    board.querySelectorAll('.roulette-bet-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        rouletteLastBet = { type: btn.dataset.bet, number: rouletteLastBet.number };
+        rouletteLastWager = Math.round(Number(document.getElementById('rouletteWagerInput').value)) || rouletteLastWager;
+        renderRouletteScreen(lastResult);
+      });
+    });
+    document.getElementById('rouletteNumberInput').addEventListener('change', (e) => {
+      const num = Math.max(0, Math.min(36, Math.round(Number(e.target.value)) || 0));
+      rouletteLastBet = { type: 'number', number: num };
+      rouletteLastWager = Math.round(Number(document.getElementById('rouletteWagerInput').value)) || rouletteLastWager;
+      renderRouletteScreen(lastResult);
+    });
+  }
+  const spinBtn = document.getElementById('rouletteSpinBtn');
+  if (spinBtn) {
+    spinBtn.addEventListener('click', () => {
+      const wagerInput = Math.round(Number(document.getElementById('rouletteWagerInput').value));
+      spinRoulette(document.getElementById('rouletteNameInput').value.trim(), wagerInput, available);
+    });
+  }
+}
+
+function rouletteBetBtnHtml(bet) {
+  const colorClass = bet.id === 'red' ? 'is-red' : bet.id === 'black' ? 'is-black' : '';
+  const selected = rouletteLastBet.type === bet.id ? 'selected' : '';
+  return `<button type="button" class="roulette-bet-btn ${colorClass} ${selected}" data-bet="${bet.id}">${bet.label} (${bet.payout}:1)</button>`;
+}
+
+async function spinRoulette(name, wager, available) {
+  if (!name) return;
+  if (!Number.isFinite(wager) || wager < ROULETTE_MIN_BET || wager > Math.min(ROULETTE_MAX_BET, available)) {
+    alert(`Wager must be between ${ROULETTE_MIN_BET} and ${Math.min(ROULETTE_MAX_BET, available)} pts.`);
+    return;
+  }
+  const betType = rouletteLastBet.type;
+  const betNumber = rouletteLastBet.number;
+  if (betType === 'number' && (!Number.isFinite(betNumber) || betNumber < 0 || betNumber > 36)) {
+    alert('Pick a number between 0 and 36.');
+    return;
+  }
+
+  rouletteLastWager = wager;
+  const modal = document.getElementById('rouletteGameModal');
+  modal.innerHTML = `
+    <button class="modal-close" id="rouletteCloseBtn">✕</button>
+    <h2>🎡 Roulette</h2>
+    <div class="roulette-wheel-display">
+      <div class="roulette-wheel-icon spinning">🎡</div>
+      <p class="hint">Spinning...</p>
+    </div>
+  `;
+  document.getElementById('rouletteCloseBtn').addEventListener('click', closeRoulette);
+
+  setTimeout(() => resolveRouletteSpin(name, wager, betType, betNumber), 900);
+}
+
+async function resolveRouletteSpin(name, wager, betType, betNumber) {
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+  const resultNumber = Math.floor(Math.random() * 37);
+  const color = rouletteNumberColor(resultNumber);
+
+  let win, payoutMultiplier;
+  if (betType === 'number') {
+    win = resultNumber === betNumber;
+    payoutMultiplier = 35;
+  } else {
+    const bet = ROULETTE_BETS.find(b => b.id === betType);
+    win = bet.check(resultNumber);
+    payoutMultiplier = bet.payout;
+  }
+
+  const payout = win ? wager + wager * payoutMultiplier : 0;
+  const netPoints = payout - wager;
+  const updates = { displayName: name, spentPoints: (profile.spentPoints || 0) + wager };
+
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+    saveAuthorName(name);
+  } catch (err) {
+    console.error(err);
+    alert('Could not spin — check your internet connection and try again.');
+    renderRouletteScreen(null);
+    return;
+  }
+
+  if (payout > 0) {
+    const reason = betType === 'number' ? `hit a straight-up number on Roulette! (35:1)` : `won a Roulette spin on ${ROULETTE_BETS.find(b => b.id === betType).label}`;
+    const updatedProfile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+    const credits = [...(updatedProfile.credits || []), { points: payout, displayPoints: netPoints, reason, source: 'game', gameType: 'roulette', awardedAt: Date.now() }];
+    const creditUpdates = { displayName: name, credits };
+    try {
+      await setDoc(doc(db, PROFILES_COLLECTION, key), creditUpdates, { merge: true });
+      profiles[key] = { ...updatedProfile, ...creditUpdates };
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  renderActivityFeed();
+  renderList();
+  renderRouletteScreen({ number: resultNumber, color, win, netPoints, wager });
+}
+
 // ---------- Activity feed ----------
 function computeActivityFeed(limit = 8) {
   const events = [];
@@ -1873,7 +2078,7 @@ function computeActivityFeed(limit = 8) {
 
   Object.values(profiles).forEach(profile => {
     (profile.credits || []).forEach(credit => {
-      const gameEventType = credit.gameType === 'blackjack' ? 'blackjack_result' : 'game_result';
+      const gameEventType = credit.gameType === 'blackjack' ? 'blackjack_result' : credit.gameType === 'roulette' ? 'roulette_result' : 'game_result';
       events.push({
         type: credit.source === 'daily' ? 'daily_reward' : (credit.source === 'game' ? gameEventType : 'moderator_credit'),
         timestamp: credit.awardedAt,
@@ -1932,6 +2137,7 @@ function activityText(item) {
       return `${authorBadgeHtml(item.creditedName)} claimed their daily reward ${pointsBadge(item.points)}`;
     case 'game_result':
     case 'blackjack_result':
+    case 'roulette_result':
       return `${authorBadgeHtml(item.creditedName)} ${escapeHtml(item.reason)} ${pointsBadge(item.points)}`;
     case 'site_update':
       return `<strong>New Update:</strong> ${escapeHtml(item.message)}`;
@@ -1941,7 +2147,7 @@ function activityText(item) {
 }
 
 function activityIcon(type) {
-  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', reply_added: '💬', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', blackjack_result: '🃏', site_update: '📢' }[type] || '•';
+  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', reply_added: '💬', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', blackjack_result: '🃏', roulette_result: '🎡', site_update: '📢' }[type] || '•';
 }
 
 function renderActivityFeed() {
@@ -2735,6 +2941,7 @@ document.getElementById('moderatorBtn').addEventListener('click', openModerator)
 document.getElementById('creditBadge').addEventListener('click', openLeaderboard);
 document.getElementById('gameBtn').addEventListener('click', () => { closeAppMenu(); openGame(); });
 document.getElementById('blackjackBtn').addEventListener('click', () => { closeAppMenu(); openBlackjack(); });
+document.getElementById('rouletteBtn').addEventListener('click', () => { closeAppMenu(); openRoulette(); });
 
 document.getElementById('appMenuBtn').addEventListener('click', (e) => {
   e.stopPropagation();
@@ -2826,6 +3033,9 @@ document.getElementById('gameOverlay').addEventListener('click', (e) => {
 });
 document.getElementById('blackjackOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'blackjackOverlay') closeBlackjack();
+});
+document.getElementById('rouletteGameOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'rouletteGameOverlay') closeRoulette();
 });
 
 populateCuisineFilterSelect();

@@ -1266,6 +1266,89 @@ main {
   min-width: 100px;
 }
 
+/* ---------- Roulette mini-game ---------- */
+.roulette-wheel-display {
+  text-align: center;
+  padding: 14px 0;
+}
+
+.roulette-wheel-icon {
+  font-size: 48px;
+  display: inline-block;
+}
+
+.roulette-wheel-icon.spinning {
+  animation: rouletteSpin 0.5s linear infinite;
+}
+
+@keyframes rouletteSpin {
+  to { transform: rotate(360deg); }
+}
+
+.roulette-result-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  font-size: 22px;
+  font-weight: 800;
+  color: white;
+  margin: 8px auto;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.roulette-result-number.is-red { background: #d62839; }
+.roulette-result-number.is-black { background: #1a1a1a; }
+.roulette-result-number.is-green { background: #1f4d1f; }
+
+.roulette-board {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.roulette-bet-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.roulette-bet-btn {
+  flex: 1;
+  min-width: 80px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: white;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.roulette-bet-btn.is-red { color: #d62839; }
+.roulette-bet-btn.is-black { color: #1a1a1a; }
+
+.roulette-bet-btn.selected {
+  background: var(--ocean-dark);
+  color: white !important;
+  border-color: var(--ocean-dark);
+}
+
+.roulette-number-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.roulette-number-row input[type="number"] {
+  width: 70px;
+}
+
 .memory-bubble-top {
   box-shadow: 0 0 0 3px var(--sunset), 0 3px 10px rgba(255, 182, 72, 0.4);
 }
