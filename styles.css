@@ -1267,22 +1267,64 @@ main {
 }
 
 /* ---------- Roulette mini-game ---------- */
-.roulette-wheel-display {
+.roulette-wheel-stage {
+  position: relative;
+  width: 220px;
+  max-width: 60vw;
+  margin: 4px auto 8px;
+}
+
+.roulette-wheel-stage.shake {
+  animation: rouletteShake 0.35s ease;
+}
+
+@keyframes rouletteShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.roulette-wheel-stage.spinning {
+  filter: drop-shadow(0 0 12px rgba(255, 196, 0, 0.55));
+}
+
+.roulette-wheel-stage.landed .roulette-pointer {
+  animation: roulettePointerDrop 0.5s ease;
+}
+
+@keyframes roulettePointerDrop {
+  0% { transform: translateY(-4px) scale(1); }
+  40% { transform: translateY(3px) scale(1.25); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.roulette-wheel-svg {
+  width: 100%;
+  display: block;
+}
+
+.roulette-pointer {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  color: var(--sunset);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.roulette-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 800;
+  font-family: var(--font-display);
+  margin: 4px 0 8px;
+}
+
+.roulette-result-banner {
   text-align: center;
-  padding: 14px 0;
-}
-
-.roulette-wheel-icon {
-  font-size: 48px;
-  display: inline-block;
-}
-
-.roulette-wheel-icon.spinning {
-  animation: rouletteSpin 0.5s linear infinite;
-}
-
-@keyframes rouletteSpin {
-  to { transform: rotate(360deg); }
+  padding: 6px 0 10px;
 }
 
 .roulette-result-number {
@@ -1295,7 +1337,7 @@ main {
   font-size: 22px;
   font-weight: 800;
   color: white;
-  margin: 8px auto;
+  margin: 4px auto 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
@@ -1303,11 +1345,48 @@ main {
 .roulette-result-number.is-black { background: #1a1a1a; }
 .roulette-result-number.is-green { background: #1f4d1f; }
 
+.roulette-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+
+.roulette-chip-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px dashed white;
+  outline: 2px solid var(--border);
+  background: var(--sunset);
+  color: white;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.roulette-chip-btn.selected {
+  outline: 3px solid var(--ocean-dark);
+  transform: scale(1.1);
+}
+
 .roulette-board {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin: 10px 0;
+}
+
+.roulette-board.locked {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.roulette-number-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
 }
 
 .roulette-bet-row {
@@ -1317,9 +1396,10 @@ main {
 }
 
 .roulette-bet-btn {
+  position: relative;
   flex: 1;
-  min-width: 80px;
-  padding: 8px 6px;
+  min-width: 70px;
+  padding: 10px 6px 16px;
   border-radius: 8px;
   border: 2px solid var(--border);
   background: white;
@@ -1330,23 +1410,42 @@ main {
   text-align: center;
 }
 
+.roulette-number-spot {
+  min-width: 0;
+  padding: 8px 4px 14px;
+  color: white;
+}
+
+.roulette-number-spot.is-red { background: #d62839; border-color: #d62839; }
+.roulette-number-spot.is-black { background: #1a1a1a; border-color: #1a1a1a; }
+.roulette-number-spot.is-green { background: #1f4d1f; border-color: #1f4d1f; }
+
 .roulette-bet-btn.is-red { color: #d62839; }
 .roulette-bet-btn.is-black { color: #1a1a1a; }
 
-.roulette-bet-btn.selected {
-  background: var(--ocean-dark);
-  color: white !important;
-  border-color: var(--ocean-dark);
+.roulette-bet-btn.has-chip {
+  box-shadow: 0 0 0 3px var(--sunset) inset;
 }
 
-.roulette-number-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.roulette-payout-tag {
+  display: block;
+  font-size: 9px;
+  opacity: 0.7;
+  font-weight: 600;
 }
 
-.roulette-number-row input[type="number"] {
-  width: 70px;
+.roulette-chip-badge {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--sunset);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  min-height: 14px;
 }
 
 .memory-bubble-top {

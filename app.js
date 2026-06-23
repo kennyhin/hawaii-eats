@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622r') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622w') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1212,7 +1212,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260622r`;
+    courtImageEl.src = `${courtItem.image}?v=20260622w`;
   }
 
   const modal = document.getElementById('gameModal');
@@ -1815,23 +1815,27 @@ function renderBlackjackResult(outcome, netPoints, wager) {
 }
 
 // ---------- Roulette mini-game ----------
-// Single-zero (European) wheel. Straight-up number pays 35:1, the even-money
-// and dozen bets pay standard casino odds. One bet per spin (no parlays) to
-// keep it simple. The whole game lives on one screen — placing the next bet
-// never leaves the result view, same "stay on screen" pattern as Blackjack.
-const ROULETTE_MIN_BET = 5;
-const ROULETTE_MAX_BET = 200;
-const ROULETTE_RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
-const ROULETTE_BETS = [
+// A 19-pocket wheel (0–18, single zero) so the odds are friendlier than a
+// real table. Players place $5/$10 chips on as many board spots as they
+// like during a 30s betting window; double-tapping a spot doubles whatever
+// chip total is already sitting there. When the clock hits zero the board
+// locks, the wheel spins, and every placed bet is settled against the one
+// result. Escrow only touches Firestore once (at lock), not per chip tap.
+const ROULETTE_CHIP_VALUES = [5, 10];
+const ROULETTE_BET_SECONDS = 30;
+const ROULETTE_MAX_TOTAL_BET = 200;
+const ROULETTE_WHEEL_SIZE = 19; // numbers 0–18
+const ROULETTE_RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18]);
+const ROULETTE_OUTSIDE_BETS = [
   { id: 'red', label: 'Red', payout: 1, check: n => ROULETTE_RED_NUMBERS.has(n) },
   { id: 'black', label: 'Black', payout: 1, check: n => n !== 0 && !ROULETTE_RED_NUMBERS.has(n) },
   { id: 'odd', label: 'Odd', payout: 1, check: n => n !== 0 && n % 2 === 1 },
   { id: 'even', label: 'Even', payout: 1, check: n => n !== 0 && n % 2 === 0 },
-  { id: 'low', label: '1–18', payout: 1, check: n => n >= 1 && n <= 18 },
-  { id: 'high', label: '19–36', payout: 1, check: n => n >= 19 && n <= 36 },
-  { id: 'dozen1', label: '1st 12', payout: 2, check: n => n >= 1 && n <= 12 },
-  { id: 'dozen2', label: '2nd 12', payout: 2, check: n => n >= 13 && n <= 24 },
-  { id: 'dozen3', label: '3rd 12', payout: 2, check: n => n >= 25 && n <= 36 },
+  { id: 'low', label: '1–9', payout: 1, check: n => n >= 1 && n <= 9 },
+  { id: 'high', label: '10–18', payout: 1, check: n => n >= 10 && n <= 18 },
+  { id: 'six1', label: '1–6', payout: 2, check: n => n >= 1 && n <= 6 },
+  { id: 'six2', label: '7–12', payout: 2, check: n => n >= 7 && n <= 12 },
+  { id: 'six3', label: '13–18', payout: 2, check: n => n >= 13 && n <= 18 },
 ];
 
 function rouletteNumberColor(n) {
@@ -1839,156 +1843,259 @@ function rouletteNumberColor(n) {
   return ROULETTE_RED_NUMBERS.has(n) ? 'red' : 'black';
 }
 
-let rouletteLastBet = { type: 'red', number: 0 };
-let rouletteLastWager = ROULETTE_MIN_BET;
+function rouletteBetDefForSpot(spotId) {
+  if (spotId.startsWith('num_')) {
+    const n = Number(spotId.slice(4));
+    return { label: `Number ${n}`, payout: 35, check: result => result === n };
+  }
+  return ROULETTE_OUTSIDE_BETS.find(b => b.id === spotId);
+}
+
+let rouletteTable = null;
+let rouletteTapTimestamps = {};
+
+function clearRoulettePendingTaps() {
+  Object.values(rouletteTapTimestamps).forEach(handle => clearTimeout(handle));
+  rouletteTapTimestamps = {};
+}
 
 function openRoulette() {
-  renderRouletteScreen(null);
-  document.getElementById('rouletteGameOverlay').classList.remove('hidden');
-}
-
-function closeRoulette() {
-  document.getElementById('rouletteGameOverlay').classList.add('hidden');
-}
-
-function renderRouletteScreen(lastResult) {
+  if (rouletteTable?.timerHandle) clearInterval(rouletteTable.timerHandle);
+  clearRoulettePendingTaps();
   const name = getSavedAuthorName();
   const profile = name ? getProfile(name) : null;
   const available = name ? (getRawPoints(name) - (profile?.spentPoints || 0)) : 0;
-  const wager = Math.max(ROULETTE_MIN_BET, Math.min(rouletteLastWager, ROULETTE_MAX_BET, available || ROULETTE_MIN_BET));
-  const canPlay = name && available >= ROULETTE_MIN_BET;
+  rouletteTable = {
+    name,
+    available,
+    selectedChip: ROULETTE_CHIP_VALUES[0],
+    bets: {},
+    phase: name ? 'betting' : 'needs_name',
+    timerSeconds: ROULETTE_BET_SECONDS,
+    timerHandle: null,
+    lastResult: null,
+  };
+  renderRouletteTable();
+  document.getElementById('rouletteGameOverlay').classList.remove('hidden');
+  if (rouletteTable.phase === 'betting') startRouletteTimer();
+}
 
+function closeRoulette() {
+  if (rouletteTable?.timerHandle) clearInterval(rouletteTable.timerHandle);
+  clearRoulettePendingTaps();
+  rouletteTable = null;
+  document.getElementById('rouletteGameOverlay').classList.add('hidden');
+}
+
+function startRouletteTimer() {
+  if (rouletteTable.timerHandle) clearInterval(rouletteTable.timerHandle);
+  rouletteTable.timerSeconds = ROULETTE_BET_SECONDS;
+  updateRouletteTimerDisplay();
+  rouletteTable.timerHandle = setInterval(() => {
+    rouletteTable.timerSeconds -= 1;
+    updateRouletteTimerDisplay();
+    if (rouletteTable.timerSeconds <= 0) {
+      clearInterval(rouletteTable.timerHandle);
+      lockRouletteBettingAndSpin();
+    }
+  }, 1000);
+}
+
+function updateRouletteTimerDisplay() {
+  const el = document.getElementById('rouletteTimerText');
+  if (el) el.textContent = `⏱ ${Math.max(0, rouletteTable.timerSeconds)}s`;
+}
+
+function rouletteTotalWagered() {
+  return Object.values(rouletteTable.bets).reduce((s, v) => s + v, 0);
+}
+
+function rouletteBoardSpotHtml(spotId, label, payout, extraClass = '') {
+  const amount = rouletteTable.bets[spotId] || 0;
+  return `
+    <button type="button" class="roulette-bet-btn ${extraClass} ${amount ? 'has-chip' : ''}" data-spot="${spotId}">
+      ${label}<span class="roulette-payout-tag">${payout}:1</span>
+      <span class="roulette-chip-badge" id="chipBadge-${spotId}">${amount ? '$' + amount : ''}</span>
+    </button>
+  `;
+}
+
+function renderRouletteTable() {
+  const t = rouletteTable;
   const modal = document.getElementById('rouletteGameModal');
+
+  if (!t || t.phase === 'needs_name') {
+    modal.innerHTML = `
+      <button class="modal-close" id="rouletteCloseBtn">✕</button>
+      <h2>🎡 Roulette</h2>
+      <div class="shop-name-field">
+        <label>Who's playing?</label>
+        <input type="text" id="rouletteNameInput" placeholder="Your name" value="">
+      </div>
+      <p class="hint">Type your name above to play.</p>
+    `;
+    document.getElementById('rouletteCloseBtn').addEventListener('click', closeRoulette);
+    document.getElementById('rouletteNameInput').addEventListener('change', (e) => {
+      const name = e.target.value.trim();
+      if (!name) return;
+      saveAuthorName(name);
+      openRoulette();
+    });
+    return;
+  }
+
+  const numberSpots = [];
+  for (let n = 0; n <= 18; n++) {
+    const color = rouletteNumberColor(n);
+    numberSpots.push(rouletteBoardSpotHtml(`num_${n}`, n, 35, `roulette-number-spot is-${color}`));
+  }
+
   modal.innerHTML = `
     <button class="modal-close" id="rouletteCloseBtn">✕</button>
     <h2>🎡 Roulette</h2>
-    <div class="shop-name-field">
-      <label>Who's playing?</label>
-      <input type="text" id="rouletteNameInput" placeholder="Your name" value="${escapeHtml(name)}">
+    <div class="roulette-wheel-stage" id="rouletteWheelStage">
+      ${buildRouletteWheelSvg()}
+      <div class="roulette-pointer">▼</div>
     </div>
-    ${lastResult ? `
-      <div class="roulette-wheel-display">
-        <div class="roulette-result-number is-${lastResult.color}">${lastResult.number}</div>
-        <h2>${lastResult.win ? '🏆 You won!' : '😢 No luck this spin.'}</h2>
-        <p class="hint">${lastResult.win ? `+${lastResult.netPoints} pts awarded!` : `Your ${lastResult.wager} pt wager is gone — try again?`}</p>
+    <div class="roulette-status-row">
+      <span class="roulette-status-text" id="rouletteStatusText">${t.phase === 'spinning' ? '🎡 Spinning...' : t.phase === 'locked' ? '🛑 No more bets!' : t.phase === 'result' ? '🎰 Round over!' : 'Place your bets!'}</span>
+      <span id="rouletteTimerText">⏱ ${Math.max(0, t.timerSeconds)}s</span>
+    </div>
+    ${t.lastResult ? `
+      <div class="roulette-result-banner">
+        <div class="roulette-result-number is-${t.lastResult.color}">${t.lastResult.number}</div>
+        <h2>${t.lastResult.netPoints > 0 ? '🏆 You won!' : t.lastResult.netPoints === 0 ? "🤝 You broke even." : '😢 No luck this spin.'}</h2>
+        <p class="hint">${t.lastResult.netPoints > 0 ? `+${t.lastResult.netPoints} pts awarded!` : t.lastResult.netPoints === 0 ? 'Your bets were returned.' : `Your ${t.lastResult.totalWagered} pt wager is gone — try again?`}</p>
       </div>
     ` : ''}
-    ${!name ? `
-      <p class="hint">Type your name above to play.</p>
-    ` : `
-      <p class="hint">Single-zero wheel. Straight-up numbers pay 35:1, dozens pay 2:1, everything else pays 1:1. Wager ${ROULETTE_MIN_BET}–${ROULETTE_MAX_BET} pts, one bet per spin.</p>
-      <p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>
-      <div class="shop-name-field">
-        <label>Wager (pts)</label>
-        <input type="number" id="rouletteWagerInput" min="${ROULETTE_MIN_BET}" max="${Math.min(ROULETTE_MAX_BET, available)}" step="1" value="${wager}">
-      </div>
-      <div class="roulette-board" id="rouletteBoard">
-        <div class="roulette-bet-row">
-          ${ROULETTE_BETS.slice(0, 2).map(b => rouletteBetBtnHtml(b)).join('')}
-        </div>
-        <div class="roulette-bet-row">
-          ${ROULETTE_BETS.slice(2, 6).map(b => rouletteBetBtnHtml(b)).join('')}
-        </div>
-        <div class="roulette-bet-row">
-          ${ROULETTE_BETS.slice(6, 9).map(b => rouletteBetBtnHtml(b)).join('')}
-        </div>
-        <div class="roulette-number-row">
-          <button type="button" class="roulette-bet-btn ${rouletteLastBet.type === 'number' ? 'selected' : ''}" id="rouletteNumberBetBtn" data-bet="number">Single Number (35:1)</button>
-          <input type="number" id="rouletteNumberInput" min="0" max="36" step="1" value="${rouletteLastBet.number}">
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-primary" id="rouletteSpinBtn" ${canPlay ? '' : 'disabled'}>🎡 Spin</button>
-        <button type="button" class="btn btn-secondary" id="rouletteDoneBtn">Close</button>
-      </div>
-      ${!canPlay ? `<p class="hint">You don't have enough points to play.</p>` : ''}
-    `}
-  `;
-  document.getElementById('rouletteCloseBtn').addEventListener('click', closeRoulette);
-  document.getElementById('rouletteNameInput').addEventListener('change', (e) => {
-    saveAuthorName(e.target.value.trim());
-    renderRouletteScreen(lastResult);
-  });
-  const doneBtn = document.getElementById('rouletteDoneBtn');
-  if (doneBtn) doneBtn.addEventListener('click', closeRoulette);
-  const board = document.getElementById('rouletteBoard');
-  if (board) {
-    board.querySelectorAll('.roulette-bet-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        rouletteLastBet = { type: btn.dataset.bet, number: rouletteLastBet.number };
-        rouletteLastWager = Math.round(Number(document.getElementById('rouletteWagerInput').value)) || rouletteLastWager;
-        renderRouletteScreen(lastResult);
-      });
-    });
-    document.getElementById('rouletteNumberInput').addEventListener('change', (e) => {
-      const num = Math.max(0, Math.min(36, Math.round(Number(e.target.value)) || 0));
-      rouletteLastBet = { type: 'number', number: num };
-      rouletteLastWager = Math.round(Number(document.getElementById('rouletteWagerInput').value)) || rouletteLastWager;
-      renderRouletteScreen(lastResult);
-    });
-  }
-  const spinBtn = document.getElementById('rouletteSpinBtn');
-  if (spinBtn) {
-    spinBtn.addEventListener('click', () => {
-      const wagerInput = Math.round(Number(document.getElementById('rouletteWagerInput').value));
-      spinRoulette(document.getElementById('rouletteNameInput').value.trim(), wagerInput, available);
-    });
-  }
-}
-
-function rouletteBetBtnHtml(bet) {
-  const colorClass = bet.id === 'red' ? 'is-red' : bet.id === 'black' ? 'is-black' : '';
-  const selected = rouletteLastBet.type === bet.id ? 'selected' : '';
-  return `<button type="button" class="roulette-bet-btn ${colorClass} ${selected}" data-bet="${bet.id}">${bet.label} (${bet.payout}:1)</button>`;
-}
-
-async function spinRoulette(name, wager, available) {
-  if (!name) return;
-  if (!Number.isFinite(wager) || wager < ROULETTE_MIN_BET || wager > Math.min(ROULETTE_MAX_BET, available)) {
-    alert(`Wager must be between ${ROULETTE_MIN_BET} and ${Math.min(ROULETTE_MAX_BET, available)} pts.`);
-    return;
-  }
-  const betType = rouletteLastBet.type;
-  const betNumber = rouletteLastBet.number;
-  if (betType === 'number' && (!Number.isFinite(betNumber) || betNumber < 0 || betNumber > 36)) {
-    alert('Pick a number between 0 and 36.');
-    return;
-  }
-
-  rouletteLastWager = wager;
-  const modal = document.getElementById('rouletteGameModal');
-  modal.innerHTML = `
-    <button class="modal-close" id="rouletteCloseBtn">✕</button>
-    <h2>🎡 Roulette</h2>
-    <div class="roulette-wheel-display">
-      <div class="roulette-wheel-icon spinning">🎡</div>
-      <p class="hint">Spinning...</p>
+    <p class="shop-balance">You have <strong>${t.available}</strong> pt${t.available === 1 ? '' : 's'} to spend · Total bet: <strong id="rouletteTotalBetText">$${rouletteTotalWagered()}</strong></p>
+    <div class="roulette-chip-row">
+      <span class="hint" style="margin:0;">Chip:</span>
+      ${ROULETTE_CHIP_VALUES.map(v => `<button type="button" class="roulette-chip-btn ${t.selectedChip === v ? 'selected' : ''}" data-chip="${v}">$${v}</button>`).join('')}
+      <button type="button" class="btn btn-secondary" id="rouletteClearBtn" style="margin-left:auto;">Clear Bets</button>
     </div>
+    <div class="roulette-board ${t.phase !== 'betting' ? 'locked' : ''}" id="rouletteBoard">
+      <div class="roulette-number-grid">${numberSpots.join('')}</div>
+      <div class="roulette-bet-row">
+        ${rouletteBoardSpotHtml('red', 'Red', 1, 'is-red')}
+        ${rouletteBoardSpotHtml('black', 'Black', 1, 'is-black')}
+      </div>
+      <div class="roulette-bet-row">
+        ${rouletteBoardSpotHtml('odd', 'Odd', 1)}
+        ${rouletteBoardSpotHtml('even', 'Even', 1)}
+        ${rouletteBoardSpotHtml('low', '1–9', 1)}
+        ${rouletteBoardSpotHtml('high', '10–18', 1)}
+      </div>
+      <div class="roulette-bet-row">
+        ${rouletteBoardSpotHtml('six1', '1–6', 2)}
+        ${rouletteBoardSpotHtml('six2', '7–12', 2)}
+        ${rouletteBoardSpotHtml('six3', '13–18', 2)}
+      </div>
+    </div>
+    <div class="modal-actions">
+      ${t.phase === 'result' ? `<button type="button" class="btn btn-primary" id="rouletteNewRoundBtn">🎡 New Round</button>` : ''}
+      <button type="button" class="btn btn-secondary" id="rouletteDoneBtn">Close</button>
+    </div>
+    <p class="hint">Tap a chip then tap the board to bet — double-tap a spot to double what's on it. Numbers pay 35:1, sixes pay 2:1, everything else pays 1:1.</p>
   `;
-  document.getElementById('rouletteCloseBtn').addEventListener('click', closeRoulette);
 
-  setTimeout(() => resolveRouletteSpin(name, wager, betType, betNumber), 900);
+  document.getElementById('rouletteCloseBtn').addEventListener('click', closeRoulette);
+  document.getElementById('rouletteDoneBtn').addEventListener('click', closeRoulette);
+  document.querySelectorAll('.roulette-chip-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      rouletteTable.selectedChip = Number(btn.dataset.chip);
+      document.querySelectorAll('.roulette-chip-btn').forEach(b => b.classList.toggle('selected', b === btn));
+    });
+  });
+  document.getElementById('rouletteClearBtn').addEventListener('click', () => {
+    if (rouletteTable.phase !== 'betting') return;
+    clearRoulettePendingTaps();
+    rouletteTable.bets = {};
+    document.querySelectorAll('.roulette-chip-badge').forEach(el => el.textContent = '');
+    document.querySelectorAll('.roulette-bet-btn').forEach(el => el.classList.remove('has-chip'));
+    updateRouletteTotalBetDisplay();
+  });
+  document.querySelectorAll('#rouletteBoard .roulette-bet-btn').forEach(btn => {
+    btn.addEventListener('click', () => onRouletteSpotTap(btn.dataset.spot));
+  });
+  const newRoundBtn = document.getElementById('rouletteNewRoundBtn');
+  if (newRoundBtn) newRoundBtn.addEventListener('click', startNewRouletteRound);
+
+  if (t.phase === 'spinning' && t.pendingResult) {
+    spinRouletteWheelAnimation(t.pendingResult.number);
+  }
 }
 
-async function resolveRouletteSpin(name, wager, betType, betNumber) {
+function updateRouletteTotalBetDisplay() {
+  const el = document.getElementById('rouletteTotalBetText');
+  if (el) el.textContent = `$${rouletteTotalWagered()}`;
+}
+
+function onRouletteSpotTap(spotId) {
+  if (!rouletteTable || rouletteTable.phase !== 'betting') return;
+  // Disambiguate single vs. double tap with a short pending window, rather than
+  // just checking "was the last tap recent" — otherwise three-plus rapid taps
+  // would double again on every tap instead of only the deliberate pair.
+  const pending = rouletteTapTimestamps[spotId];
+  if (pending) {
+    clearTimeout(pending);
+    delete rouletteTapTimestamps[spotId];
+    const current = rouletteTable.bets[spotId] || 0;
+    commitRouletteBet(spotId, current * 2);
+    return;
+  }
+  rouletteTapTimestamps[spotId] = setTimeout(() => {
+    delete rouletteTapTimestamps[spotId];
+    const current = rouletteTable.bets[spotId] || 0;
+    commitRouletteBet(spotId, current + rouletteTable.selectedChip);
+  }, 280);
+}
+
+function commitRouletteBet(spotId, newAmount) {
+  if (newAmount <= 0) return;
+  const current = rouletteTable.bets[spotId] || 0;
+  const otherTotal = rouletteTotalWagered() - current;
+  if (otherTotal + newAmount > rouletteTable.available || otherTotal + newAmount > ROULETTE_MAX_TOTAL_BET) {
+    const stage = document.getElementById('rouletteWheelStage');
+    if (stage) {
+      stage.classList.remove('shake');
+      requestAnimationFrame(() => stage.classList.add('shake'));
+    }
+    return;
+  }
+
+  rouletteTable.bets[spotId] = newAmount;
+  const badge = document.getElementById(`chipBadge-${spotId}`);
+  if (badge) badge.textContent = `$${newAmount}`;
+  const btn = document.querySelector(`.roulette-bet-btn[data-spot="${spotId}"]`);
+  if (btn) btn.classList.add('has-chip');
+  updateRouletteTotalBetDisplay();
+}
+
+function lockRouletteBettingAndSpin() {
+  if (!rouletteTable) return;
+  clearRoulettePendingTaps();
+  rouletteTable.phase = 'locked';
+  const statusEl = document.getElementById('rouletteStatusText');
+  if (statusEl) statusEl.textContent = '🛑 No more bets!';
+  document.getElementById('rouletteBoard')?.classList.add('locked');
+
+  if (rouletteTotalWagered() === 0) {
+    setTimeout(() => startNewRouletteRound(), 1200);
+    return;
+  }
+  setTimeout(() => spinRouletteWheel(), 1000);
+}
+
+async function spinRouletteWheel() {
+  const t = rouletteTable;
+  if (!t) return;
+  t.phase = 'spinning';
+  const name = t.name;
   const key = normalizeName(name);
   const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
-  const resultNumber = Math.floor(Math.random() * 37);
-  const color = rouletteNumberColor(resultNumber);
-
-  let win, payoutMultiplier;
-  if (betType === 'number') {
-    win = resultNumber === betNumber;
-    payoutMultiplier = 35;
-  } else {
-    const bet = ROULETTE_BETS.find(b => b.id === betType);
-    win = bet.check(resultNumber);
-    payoutMultiplier = bet.payout;
-  }
-
-  const payout = win ? wager + wager * payoutMultiplier : 0;
-  const netPoints = payout - wager;
-  const updates = { displayName: name, spentPoints: (profile.spentPoints || 0) + wager };
+  const totalWagered = rouletteTotalWagered();
+  const updates = { displayName: name, spentPoints: (profile.spentPoints || 0) + totalWagered };
 
   try {
     await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
@@ -1996,19 +2103,106 @@ async function resolveRouletteSpin(name, wager, betType, betNumber) {
     saveAuthorName(name);
   } catch (err) {
     console.error(err);
-    alert('Could not spin — check your internet connection and try again.');
-    renderRouletteScreen(null);
+    alert('Could not place your bets — check your internet connection and try again.');
+    t.phase = 'betting';
+    renderRouletteTable();
+    startRouletteTimer();
     return;
   }
 
+  const resultNumber = Math.floor(Math.random() * ROULETTE_WHEEL_SIZE);
+  t.pendingResult = { number: resultNumber, totalWagered };
+  const statusEl = document.getElementById('rouletteStatusText');
+  if (statusEl) statusEl.textContent = '🎡 Spinning...';
+  spinRouletteWheelAnimation(resultNumber, () => finishRouletteSpin(resultNumber, totalWagered));
+}
+
+function buildRouletteWheelSvg() {
+  const segAngle = 360 / ROULETTE_WHEEL_SIZE;
+  const R = 130, cx = 150, cy = 150, labelR = 108;
+  let wedges = '';
+  let labels = '';
+  for (let i = 0; i < ROULETTE_WHEEL_SIZE; i++) {
+    const startAngle = i * segAngle - segAngle / 2 - 90;
+    const endAngle = startAngle + segAngle;
+    const x1 = cx + R * Math.cos(startAngle * Math.PI / 180);
+    const y1 = cy + R * Math.sin(startAngle * Math.PI / 180);
+    const x2 = cx + R * Math.cos(endAngle * Math.PI / 180);
+    const y2 = cy + R * Math.sin(endAngle * Math.PI / 180);
+    const colorName = rouletteNumberColor(i);
+    const fill = colorName === 'red' ? '#d62839' : colorName === 'black' ? '#1a1a1a' : '#1f4d1f';
+    wedges += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 0,1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${fill}" stroke="#3b2a1a" stroke-width="1.5"/>`;
+    const midAngle = i * segAngle - 90;
+    const lx = cx + labelR * Math.cos(midAngle * Math.PI / 180);
+    const ly = cy + labelR * Math.sin(midAngle * Math.PI / 180);
+    labels += `<text x="${lx.toFixed(2)}" y="${ly.toFixed(2)}" fill="white" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="middle">${i}</text>`;
+  }
+  return `
+    <svg viewBox="0 0 300 300" class="roulette-wheel-svg">
+      <g id="rouletteWheelGroup" style="transform-box: view-box; transform-origin: center;">
+        ${wedges}
+        ${labels}
+        <circle cx="${cx}" cy="${cy}" r="22" fill="#3b2a1a" stroke="#fff" stroke-width="2"/>
+      </g>
+      <circle cx="${cx}" cy="${cy}" r="${R + 4}" fill="none" stroke="#3b2a1a" stroke-width="4"/>
+    </svg>
+  `;
+}
+
+function spinRouletteWheelAnimation(resultNumber, onDone) {
+  const group = document.getElementById('rouletteWheelGroup');
+  if (!group) return;
+  const segAngle = 360 / ROULETTE_WHEEL_SIZE;
+  const extraSpins = 6;
+  const rotation = extraSpins * 360 - resultNumber * segAngle;
+
+  group.style.transition = 'none';
+  group.style.transform = 'rotate(0deg)';
+  // Force reflow so the reset above takes effect before the new transition starts.
+  group.getBoundingClientRect();
+  group.style.transition = 'transform 3.5s cubic-bezier(0.12, 0.65, 0.15, 1)';
+  group.style.transform = `rotate(${rotation}deg)`;
+
+  document.getElementById('rouletteWheelStage')?.classList.add('spinning');
+  if (onDone) {
+    setTimeout(() => {
+      document.getElementById('rouletteWheelStage')?.classList.remove('spinning');
+      document.getElementById('rouletteWheelStage')?.classList.add('landed');
+      onDone();
+    }, 3600);
+  }
+}
+
+async function finishRouletteSpin(resultNumber, totalWagered) {
+  const t = rouletteTable;
+  if (!t) return;
+  const name = t.name;
+  const key = normalizeName(name);
+  const color = rouletteNumberColor(resultNumber);
+
+  const winningSpots = [];
+  let payout = 0;
+  Object.entries(t.bets).forEach(([spotId, amount]) => {
+    const bet = rouletteBetDefForSpot(spotId);
+    if (bet && bet.check(resultNumber)) {
+      payout += amount + amount * bet.payout;
+      winningSpots.push(bet.label);
+    }
+  });
+  const netPoints = payout - totalWagered;
+
   if (payout > 0) {
-    const reason = betType === 'number' ? `hit a straight-up number on Roulette! (35:1)` : `won a Roulette spin on ${ROULETTE_BETS.find(b => b.id === betType).label}`;
-    const updatedProfile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
-    const credits = [...(updatedProfile.credits || []), { points: payout, displayPoints: netPoints, reason, source: 'game', gameType: 'roulette', awardedAt: Date.now() }];
+    const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+    const reason = netPoints > 0
+      ? `won a Roulette spin on ${winningSpots.join(', ')}`
+      : netPoints === 0
+        ? `broke even on a Roulette spin (hit ${winningSpots.join(', ')})`
+        : `still lost overall on a Roulette spin, despite hitting ${winningSpots.join(', ')}`;
+    const credits = [...(profile.credits || []), { points: payout, displayPoints: netPoints, reason, source: 'game', gameType: 'roulette', awardedAt: Date.now() }];
     const creditUpdates = { displayName: name, credits };
     try {
       await setDoc(doc(db, PROFILES_COLLECTION, key), creditUpdates, { merge: true });
-      profiles[key] = { ...updatedProfile, ...creditUpdates };
+      profiles[key] = { ...profile, ...creditUpdates };
     } catch (err) {
       console.error(err);
     }
@@ -2016,7 +2210,24 @@ async function resolveRouletteSpin(name, wager, betType, betNumber) {
 
   renderActivityFeed();
   renderList();
-  renderRouletteScreen({ number: resultNumber, color, win, netPoints, wager });
+
+  t.phase = 'result';
+  t.lastResult = { number: resultNumber, color, netPoints, totalWagered };
+  t.available = getRawPoints(name) - (getProfile(name)?.spentPoints || 0);
+  t.bets = {};
+  delete t.pendingResult;
+  renderRouletteTable();
+}
+
+function startNewRouletteRound() {
+  const t = rouletteTable;
+  if (!t) return;
+  t.phase = 'betting';
+  t.bets = {};
+  t.lastResult = null;
+  t.available = getRawPoints(t.name) - (getProfile(t.name)?.spentPoints || 0);
+  renderRouletteTable();
+  startRouletteTimer();
 }
 
 // ---------- Activity feed ----------
