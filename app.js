@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622o') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622p') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -159,12 +159,20 @@ const SHOP_TENNIS_BALLS = [
   { id: 'ball_crimson', label: 'Crimson', hex: '#e63946', cost: TENNIS_BALL_COST },
 ];
 
+const TENNIS_COURT_IMAGE_COST = 35;
+
 const SHOP_TENNIS_COURTS = [
   { id: 'court_clay', label: 'Clay Red', hex: '#8a3f20', cost: TENNIS_COURT_COST },
   { id: 'court_grass', label: 'Grass Green', hex: '#1f4d1f', cost: TENNIS_COURT_COST },
   { id: 'court_purple', label: 'Royal Purple', hex: '#3b2a5e', cost: TENNIS_COURT_COST },
   { id: 'court_charcoal', label: 'Charcoal', hex: '#1a1a1a', cost: TENNIS_COURT_COST },
   { id: 'court_teal', label: 'Ocean Teal', hex: '#0e4d52', cost: TENNIS_COURT_COST },
+  { id: 'court_f1_petronas', label: 'F1 Petronas', hex: '#1a1a1a', cost: TENNIS_COURT_IMAGE_COST, image: 'tennis-courts/court_f1_petronas.png', overlay: 0 },
+  { id: 'court_vikings', label: 'Vikings', hex: '#3b2a5e', cost: TENNIS_COURT_IMAGE_COST, image: 'tennis-courts/court_vikings.png', overlay: 0 },
+  { id: 'court_minecraft', label: 'Minecraft', hex: '#2c2a26', cost: TENNIS_COURT_IMAGE_COST, image: 'tennis-courts/court_minecraft.png', overlay: 0 },
+  { id: 'court_blastoise', label: 'Blastoise', hex: '#4cc9f0', cost: TENNIS_COURT_IMAGE_COST, image: 'tennis-courts/court_blastoise.png', overlay: 0 },
+  { id: 'court_ffx', label: 'Final Fantasy X', hex: '#3b5a8a', cost: TENNIS_COURT_IMAGE_COST, image: 'tennis-courts/court_ffx.png', overlay: 0 },
+  { id: 'court_hibiscus', label: 'Hibiscus', hex: '#e0298f', cost: TENNIS_COURT_IMAGE_COST, image: 'tennis-courts/court_hibiscus.png', overlay: 0 },
 ];
 
 const SHOP_CATALOG = {
@@ -742,7 +750,7 @@ function openShop() {
   modal.innerHTML = `
     <button class="modal-close" id="shopCloseBtn">✕</button>
     <h2>🛍️ Shop</h2>
-    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Basic skins ${BASIC_SKIN_COST} pts · Custom skins ${SKIN_COST} pts · Outline style ${OUTLINE_STYLE_COST} pts · Outline color ${OUTLINE_COLOR_COST} pts · ✨ Dynamic skins/outlines ${ANIMATED_COST} pts · 🎾 Tennis racket/ball ${TENNIS_RACKET_COST} pts · 🎾 Tennis court ${TENNIS_COURT_COST} pts</p>
+    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Basic skins ${BASIC_SKIN_COST} pts · Custom skins ${SKIN_COST} pts · Outline style ${OUTLINE_STYLE_COST} pts · Outline color ${OUTLINE_COLOR_COST} pts · ✨ Dynamic skins/outlines ${ANIMATED_COST} pts · 🎾 Tennis racket/ball ${TENNIS_RACKET_COST} pts · 🎾 Tennis court ${TENNIS_COURT_COST} pts · 🎾 Custom tennis court ${TENNIS_COURT_IMAGE_COST} pts</p>
 
     <div class="shop-name-field">
       <label>Who are you?</label>
@@ -1185,7 +1193,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260622o`;
+    courtImageEl.src = `${courtItem.image}?v=20260622p`;
   }
 
   const modal = document.getElementById('gameModal');
