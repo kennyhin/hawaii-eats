@@ -873,6 +873,50 @@ main {
   background: #0c2b2e;
 }
 
+.tennis-court-wrap {
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.tennis-start-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 43, 46, 0.6);
+  border-radius: 12px;
+}
+
+.tennis-start-overlay.hidden {
+  display: none;
+}
+
+.tennis-controls {
+  display: flex;
+  gap: 10px;
+  max-width: 600px;
+  margin: 10px auto 0;
+}
+
+.tennis-move-btn {
+  flex: 1;
+  padding: 16px 0;
+  font-size: 22px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--ocean-dark);
+  color: white;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+}
+
+.tennis-move-btn:active {
+  background: var(--ocean);
+}
+
 .memory-bubble-top {
   box-shadow: 0 0 0 3px var(--sunset), 0 3px 10px rgba(255, 182, 72, 0.4);
 }

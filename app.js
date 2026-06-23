@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622g') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622h') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1092,8 +1092,17 @@ function renderGameCanvas(name) {
       <span id="tennisMatchScore">Series: 0 – 0</span>
       <span id="tennisCpuScore">CPU: 0</span>
     </div>
-    <canvas id="tennisCanvas" width="600" height="360"></canvas>
-    <p class="hint">Drag up/down on the court to move your racket.</p>
+    <div class="tennis-court-wrap">
+      <canvas id="tennisCanvas" width="600" height="360"></canvas>
+      <div class="tennis-start-overlay" id="tennisStartOverlay">
+        <button type="button" class="btn btn-primary" id="tennisStartMatchBtn">▶ Start Match 1</button>
+      </div>
+    </div>
+    <div class="tennis-controls">
+      <button type="button" class="tennis-move-btn" id="tennisUpBtn">⬆️</button>
+      <button type="button" class="tennis-move-btn" id="tennisDownBtn">⬇️</button>
+    </div>
+    <p class="hint">Hold ⬆️ / ⬇️ (or drag on the court) to move your racket.</p>
   `;
   document.getElementById('gameCloseBtn').addEventListener('click', closeGame);
 
@@ -1112,6 +1121,8 @@ function renderGameCanvas(name) {
     roundsWonPlayer: 0, roundsWonCpu: 0,
     gameNum: 1,
     running: true,
+    paused: true,
+    moveDir: 0,
   };
 
   function moveTo(clientY) {
@@ -1126,7 +1137,26 @@ function renderGameCanvas(name) {
   }, { passive: false });
   canvas.addEventListener('mousemove', (e) => moveTo(e.clientY));
 
+  const bindHold = (btn, dir) => {
+    const start = (e) => { e.preventDefault(); if (gameState) gameState.moveDir = dir; };
+    const stop = () => { if (gameState) gameState.moveDir = 0; };
+    btn.addEventListener('pointerdown', start);
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointerleave', stop);
+    btn.addEventListener('pointercancel', stop);
+  };
+  bindHold(document.getElementById('tennisUpBtn'), -1);
+  bindHold(document.getElementById('tennisDownBtn'), 1);
+
+  document.getElementById('tennisStartMatchBtn').addEventListener('click', startMatchPoint);
+
   drawGame(gameState);
+}
+
+function startMatchPoint() {
+  if (!gameState) return;
+  gameState.paused = false;
+  document.getElementById('tennisStartOverlay').classList.add('hidden');
   gameAnimId = requestAnimationFrame(gameLoop);
 }
 
@@ -1138,8 +1168,13 @@ function resetBall(g, dir) {
 }
 
 function gameLoop() {
-  if (!gameState || !gameState.running) return;
+  if (!gameState || !gameState.running || gameState.paused) return;
   const g = gameState;
+
+  if (g.moveDir) {
+    const moveSpeed = 6;
+    g.playerY = Math.max(0, Math.min(g.h - g.paddleH, g.playerY + g.moveDir * moveSpeed));
+  }
 
   g.ballX += g.ballVX;
   g.ballY += g.ballVY;
@@ -1216,10 +1251,14 @@ function endGameRound() {
   g.gameNum += 1;
   g.playerScore = 0;
   g.cpuScore = 0;
+  g.paused = true;
   resetBall(g, Math.random() < 0.5 ? 1 : -1);
   document.getElementById('tennisGameTitle').textContent = `🎾 Tennis — Match ${g.gameNum}`;
   document.getElementById('tennisMatchScore').textContent = `Series: ${g.roundsWonPlayer} – ${g.roundsWonCpu}`;
-  gameAnimId = requestAnimationFrame(gameLoop);
+  drawGame(g);
+  const overlay = document.getElementById('tennisStartOverlay');
+  document.getElementById('tennisStartMatchBtn').textContent = `▶ Start Match ${g.gameNum}`;
+  overlay.classList.remove('hidden');
 }
 
 async function endGameMatch(playerWon) {
