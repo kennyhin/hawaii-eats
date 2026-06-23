@@ -873,10 +873,22 @@ main {
   background: #0c2b2e;
 }
 
+.tennis-play-area {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  max-width: 660px;
+  margin: 0 auto;
+}
+
+.tennis-play-area.hand-right {
+  flex-direction: row-reverse;
+}
+
 .tennis-court-wrap {
   position: relative;
-  max-width: 600px;
-  margin: 0 auto;
+  flex: 1;
+  min-width: 0;
 }
 
 .tennis-start-overlay {
@@ -893,28 +905,49 @@ main {
   display: none;
 }
 
-.tennis-controls {
-  display: flex;
-  gap: 10px;
-  max-width: 600px;
-  margin: 10px auto 0;
+.tennis-slider-track {
+  position: relative;
+  width: 52px;
+  flex-shrink: 0;
+  background: var(--sand);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  touch-action: none;
+  cursor: pointer;
 }
 
-.tennis-move-btn {
+.tennis-slider-thumb {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  height: 56px;
+  top: 0;
+  background: var(--ocean-dark);
+  border-radius: 11px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  pointer-events: none;
+}
+
+.tennis-hand-picker {
+  display: flex;
+  gap: 8px;
+}
+
+.tennis-hand-btn {
   flex: 1;
-  padding: 16px 0;
-  font-size: 22px;
-  border: none;
+  padding: 10px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 2px solid var(--border);
   border-radius: var(--radius);
+  background: white;
+  cursor: pointer;
+}
+
+.tennis-hand-btn.active {
   background: var(--ocean-dark);
   color: white;
-  cursor: pointer;
-  user-select: none;
-  touch-action: none;
-}
-
-.tennis-move-btn:active {
-  background: var(--ocean);
+  border-color: var(--ocean-dark);
 }
 
 .memory-bubble-top {

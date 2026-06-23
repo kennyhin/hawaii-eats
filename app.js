@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622h') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622i') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1010,6 +1010,14 @@ const GAME_ENTRY_COST = 10;
 const GAME_WIN_POINTS = 20;
 const ROUND_WIN_SCORE = 1;
 const MATCH_WINS_NEEDED = 2;
+const TENNIS_HAND_KEY = 'food_memory_album_tennis_hand';
+
+function getSavedHandedness() {
+  return localStorage.getItem(TENNIS_HAND_KEY) || 'right';
+}
+function saveHandedness(hand) {
+  localStorage.setItem(TENNIS_HAND_KEY, hand);
+}
 
 let gameState = null;
 let gameAnimId = null;
@@ -1019,14 +1027,22 @@ function openGame() {
   const name = getSavedAuthorName();
   const profile = name ? getProfile(name) : null;
   const available = name ? (getRawPoints(name) - (profile?.spentPoints || 0)) : 0;
+  const hand = getSavedHandedness();
   const modal = document.getElementById('gameModal');
   modal.innerHTML = `
     <button class="modal-close" id="gameCloseBtn">✕</button>
     <h2>🎾 Tennis</h2>
-    <p class="hint">Best of 3 — first point wins a match, first to win 2 matches takes the series. Entry costs ${GAME_ENTRY_COST} pts. Win the series for +${GAME_WIN_POINTS} pts — lose, and your entry fee is gone. Drag your finger (or mouse) up and down on the court to move your racket.</p>
+    <p class="hint">Best of 3 — first point wins a match, first to win 2 matches takes the series. Entry costs ${GAME_ENTRY_COST} pts. Win the series for +${GAME_WIN_POINTS} pts — lose, and your entry fee is gone. Slide your finger up and down on the bar beside the court to move your racket.</p>
     <div class="shop-name-field">
       <label>Who's playing?</label>
       <input type="text" id="gameNameInput" placeholder="Your name" value="${escapeHtml(name)}">
+    </div>
+    <div class="shop-name-field">
+      <label>Which hand do you play with?</label>
+      <div class="tennis-hand-picker">
+        <button type="button" class="tennis-hand-btn ${hand === 'left' ? 'active' : ''}" data-hand="left">🤚 Left-handed</button>
+        <button type="button" class="tennis-hand-btn ${hand === 'right' ? 'active' : ''}" data-hand="right">✋ Right-handed</button>
+      </div>
     </div>
     ${name ? `<p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>` : `<p class="hint">Type your name above to play.</p>`}
     <div class="modal-actions">
@@ -1037,6 +1053,12 @@ function openGame() {
   document.getElementById('gameNameInput').addEventListener('change', (e) => {
     saveAuthorName(e.target.value.trim());
     openGame();
+  });
+  document.querySelectorAll('.tennis-hand-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      saveHandedness(btn.dataset.hand);
+      openGame();
+    });
   });
   const startBtn = document.getElementById('gameStartBtn');
   if (startBtn) {
@@ -1083,6 +1105,7 @@ async function startGameMatch(name) {
 }
 
 function renderGameCanvas(name) {
+  const hand = getSavedHandedness();
   const modal = document.getElementById('gameModal');
   modal.innerHTML = `
     <button class="modal-close" id="gameCloseBtn">✕</button>
@@ -1092,17 +1115,18 @@ function renderGameCanvas(name) {
       <span id="tennisMatchScore">Series: 0 – 0</span>
       <span id="tennisCpuScore">CPU: 0</span>
     </div>
-    <div class="tennis-court-wrap">
-      <canvas id="tennisCanvas" width="600" height="360"></canvas>
-      <div class="tennis-start-overlay" id="tennisStartOverlay">
-        <button type="button" class="btn btn-primary" id="tennisStartMatchBtn">▶ Start Match 1</button>
+    <div class="tennis-play-area ${hand === 'right' ? 'hand-right' : ''}">
+      <div class="tennis-slider-track" id="tennisSliderTrack">
+        <div class="tennis-slider-thumb" id="tennisSliderThumb"></div>
+      </div>
+      <div class="tennis-court-wrap">
+        <canvas id="tennisCanvas" width="600" height="360"></canvas>
+        <div class="tennis-start-overlay" id="tennisStartOverlay">
+          <button type="button" class="btn btn-primary" id="tennisStartMatchBtn">▶ Start Match 1</button>
+        </div>
       </div>
     </div>
-    <div class="tennis-controls">
-      <button type="button" class="tennis-move-btn" id="tennisUpBtn">⬆️</button>
-      <button type="button" class="tennis-move-btn" id="tennisDownBtn">⬇️</button>
-    </div>
-    <p class="hint">Hold ⬆️ / ⬇️ (or drag on the court) to move your racket.</p>
+    <p class="hint">Slide your finger up/down on the bar to move your racket.</p>
   `;
   document.getElementById('gameCloseBtn').addEventListener('click', closeGame);
 
@@ -1122,34 +1146,40 @@ function renderGameCanvas(name) {
     gameNum: 1,
     running: true,
     paused: true,
-    moveDir: 0,
   };
 
-  function moveTo(clientY) {
-    const rect = canvas.getBoundingClientRect();
-    const scale = canvas.height / rect.height;
-    const y = (clientY - rect.top) * scale;
-    gameState.playerY = Math.max(0, Math.min(canvas.height - gameState.paddleH, y - gameState.paddleH / 2));
+  const track = document.getElementById('tennisSliderTrack');
+  const thumb = document.getElementById('tennisSliderThumb');
+
+  function updateSliderThumb() {
+    const trackHeight = track.getBoundingClientRect().height;
+    const thumbHeight = thumb.getBoundingClientRect().height;
+    const ratio = gameState.playerY / (gameState.h - gameState.paddleH);
+    thumb.style.top = `${ratio * Math.max(0, trackHeight - thumbHeight)}px`;
   }
-  canvas.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    moveTo(e.touches[0].clientY);
-  }, { passive: false });
-  canvas.addEventListener('mousemove', (e) => moveTo(e.clientY));
 
-  const bindHold = (btn, dir) => {
-    const start = (e) => { e.preventDefault(); if (gameState) gameState.moveDir = dir; };
-    const stop = () => { if (gameState) gameState.moveDir = 0; };
-    btn.addEventListener('pointerdown', start);
-    btn.addEventListener('pointerup', stop);
-    btn.addEventListener('pointerleave', stop);
-    btn.addEventListener('pointercancel', stop);
-  };
-  bindHold(document.getElementById('tennisUpBtn'), -1);
-  bindHold(document.getElementById('tennisDownBtn'), 1);
+  function setPlayerYFromClientY(clientY) {
+    const rect = track.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+    gameState.playerY = ratio * (gameState.h - gameState.paddleH);
+    updateSliderThumb();
+  }
+
+  let dragging = false;
+  track.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    track.setPointerCapture(e.pointerId);
+    setPlayerYFromClientY(e.clientY);
+  });
+  track.addEventListener('pointermove', (e) => {
+    if (dragging) setPlayerYFromClientY(e.clientY);
+  });
+  track.addEventListener('pointerup', () => { dragging = false; });
+  track.addEventListener('pointercancel', () => { dragging = false; });
 
   document.getElementById('tennisStartMatchBtn').addEventListener('click', startMatchPoint);
 
+  updateSliderThumb();
   drawGame(gameState);
 }
 
@@ -1170,11 +1200,6 @@ function resetBall(g, dir) {
 function gameLoop() {
   if (!gameState || !gameState.running || gameState.paused) return;
   const g = gameState;
-
-  if (g.moveDir) {
-    const moveSpeed = 6;
-    g.playerY = Math.max(0, Math.min(g.h - g.paddleH, g.playerY + g.moveDir * moveSpeed));
-  }
 
   g.ballX += g.ballVX;
   g.ballY += g.ballVY;
