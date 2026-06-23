@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622n') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622o') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -675,6 +675,7 @@ function shopItemPreview(category, item) {
     if (item.animationClass) return `<span class="shop-preview shop-preview-outline ${item.animationClass}" data-category="${category}" data-id="${item.id}" style="--outline-glow-color:${DEFAULT_OUTLINE_COLOR};"></span>`;
     return `<span class="shop-preview shop-preview-outline" data-category="${category}" data-id="${item.id}" style="border: ${item.width} ${item.borderStyle} ${DEFAULT_OUTLINE_COLOR};"></span>`;
   }
+  if (category === 'tennisCourt' && item.image) return `<span class="shop-preview shop-preview-skin" data-category="${category}" data-id="${item.id}" style="background:${skinBackgroundCss(item)}"></span>`;
   return `<span class="shop-preview shop-preview-color" data-category="${category}" data-id="${item.id}" style="background:${item.hex}"></span>`;
 }
 
@@ -1179,7 +1180,13 @@ function renderGameCanvas(name) {
   const profile = getProfile(name);
   const racketColor = SHOP_TENNIS_RACKETS.find(r => r.id === profile?.equippedTennisRacket)?.hex || '#ffffff';
   const ballColor = SHOP_TENNIS_BALLS.find(b => b.id === profile?.equippedTennisBall)?.hex || '#ffffff';
-  const courtColor = SHOP_TENNIS_COURTS.find(c => c.id === profile?.equippedTennisCourt)?.hex || '#0c2b2e';
+  const courtItem = SHOP_TENNIS_COURTS.find(c => c.id === profile?.equippedTennisCourt);
+  const courtColor = courtItem?.hex || '#0c2b2e';
+  let courtImageEl = null;
+  if (courtItem?.image) {
+    courtImageEl = new Image();
+    courtImageEl.src = `${courtItem.image}?v=20260622o`;
+  }
 
   const modal = document.getElementById('gameModal');
   modal.innerHTML = `
@@ -1228,6 +1235,7 @@ function renderGameCanvas(name) {
     racketColor,
     ballColor,
     courtColor,
+    courtImageEl,
   };
 
   const track = document.getElementById('tennisSliderTrack');
@@ -1325,8 +1333,12 @@ function gameLoop() {
 
 function drawGame(g) {
   const ctx = g.ctx;
-  ctx.fillStyle = g.courtColor;
-  ctx.fillRect(0, 0, g.w, g.h);
+  if (g.courtImageEl && g.courtImageEl.complete && g.courtImageEl.naturalWidth) {
+    ctx.drawImage(g.courtImageEl, 0, 0, g.w, g.h);
+  } else {
+    ctx.fillStyle = g.courtColor;
+    ctx.fillRect(0, 0, g.w, g.h);
+  }
   ctx.strokeStyle = 'rgba(255,255,255,0.3)';
   ctx.setLineDash([6, 10]);
   ctx.beginPath();
