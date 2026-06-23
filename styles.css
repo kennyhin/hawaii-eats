@@ -428,6 +428,41 @@ main {
   transform: scale(1.1);
 }
 
+.points-corner-badge {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 60;
+  background: rgba(20, 20, 20, 0.78);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  transition: transform 0.15s;
+}
+
+.points-corner-badge:hover {
+  transform: scale(1.05);
+}
+
+.points-corner-badge.hidden {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .points-corner-badge {
+    top: 8px;
+    right: 8px;
+    font-size: 12px;
+    padding: 5px 11px;
+  }
+}
+
 .lightbox-nav-btn {
   position: absolute;
   top: 50%;

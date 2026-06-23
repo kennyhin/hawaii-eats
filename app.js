@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622p') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622q') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -244,6 +244,7 @@ function getSavedAuthorName() {
 
 function saveAuthorName(name) {
   localStorage.setItem(AUTHOR_NAME_KEY, name);
+  renderCreditBadge();
 }
 
 function getSavedAuthorColor() {
@@ -285,6 +286,7 @@ function subscribeToPlaces() {
     firstSnapshotReceived = true;
     renderList();
     renderActivityFeed();
+    renderCreditBadge();
     if (!document.getElementById('leaderboardOverlay').classList.contains('hidden')) {
       openLeaderboard();
     }
@@ -305,6 +307,7 @@ function subscribeToProfiles() {
     renderList();
     renderActivityFeed();
     renderDailyRewardBubble();
+    renderCreditBadge();
     if (!document.getElementById('shopOverlay').classList.contains('hidden')) {
       openShop();
     }
@@ -456,6 +459,7 @@ function placeCardHtml(p, rank) {
 function renderList() {
   const container = document.getElementById('listContainer');
   const countLine = document.getElementById('countLine');
+  renderCreditBadge();
 
   if (!firstSnapshotReceived) {
     countLine.textContent = '';
@@ -838,6 +842,7 @@ async function buyItem(name, category, itemId, cost) {
   try {
     await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
     profiles[key] = { ...profile, ...updates };
+    renderCreditBadge();
     openShop();
   } catch (err) {
     console.error(err);
@@ -1022,6 +1027,20 @@ function renderDailyRewardBubble() {
   }
 }
 
+function renderCreditBadge() {
+  const badge = document.getElementById('creditBadge');
+  const name = getSavedAuthorName();
+  if (!name) {
+    badge.classList.add('hidden');
+    return;
+  }
+  const profile = getProfile(name);
+  const available = getRawPoints(name) - (profile?.spentPoints || 0);
+  badge.classList.remove('hidden');
+  badge.title = `${name} — tap to open the Leaderboard`;
+  badge.innerHTML = `🪙 <strong>${available}</strong> pts`;
+}
+
 async function claimDailyReward() {
   let name = getSavedAuthorName();
   if (!name) {
@@ -1193,7 +1212,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260622p`;
+    courtImageEl.src = `${courtItem.image}?v=20260622q`;
   }
 
   const modal = document.getElementById('gameModal');
@@ -1654,6 +1673,7 @@ async function doubleDownBlackjack() {
   try {
     await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
     profiles[key] = { ...profile, ...updates };
+    renderCreditBadge();
   } catch (err) {
     console.error(err);
     alert('Could not double down — check your internet connection and try again.');
@@ -1742,6 +1762,12 @@ function renderBlackjackResult(outcome, netPoints, wager) {
     lose: { emoji: '😢', title: 'The dealer wins this hand.', detail: `Your ${wager} pt wager is gone — try again?` },
   }[outcome];
 
+  const name = g.name;
+  const profile = getProfile(name);
+  const available = getRawPoints(name) - (profile?.spentPoints || 0);
+  const nextWager = Math.max(BLACKJACK_MIN_BET, Math.min(wager, BLACKJACK_MAX_BET, available));
+  const canRebet = available >= BLACKJACK_MIN_BET;
+
   const modal = document.getElementById('blackjackModal');
   modal.innerHTML = `
     <button class="modal-close" id="blackjackCloseBtn">✕</button>
@@ -1760,14 +1786,32 @@ function renderBlackjackResult(outcome, netPoints, wager) {
       <h2>${copy.title}</h2>
       <p class="hint">${copy.detail}</p>
     </div>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-primary" id="bjPlayAgainBtn">🃏 Play Again</button>
-      <button type="button" class="btn btn-secondary" id="bjDoneBtn">Close</button>
-    </div>
+    <p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>
+    ${canRebet ? `
+      <div class="shop-name-field">
+        <label>Wager (pts)</label>
+        <input type="number" id="bjRebetInput" min="${BLACKJACK_MIN_BET}" max="${Math.min(BLACKJACK_MAX_BET, available)}" step="1" value="${nextWager}">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="bjPlayAgainBtn">🃏 Deal Again</button>
+        <button type="button" class="btn btn-secondary" id="bjDoneBtn">Close</button>
+      </div>
+    ` : `
+      <p class="hint">You don't have enough points to play another hand.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="bjDoneBtn">Close</button>
+      </div>
+    `}
   `;
   document.getElementById('blackjackCloseBtn').addEventListener('click', closeBlackjack);
   document.getElementById('bjDoneBtn').addEventListener('click', closeBlackjack);
-  document.getElementById('bjPlayAgainBtn').addEventListener('click', () => openBlackjack());
+  const playAgainBtn = document.getElementById('bjPlayAgainBtn');
+  if (playAgainBtn) {
+    playAgainBtn.addEventListener('click', () => {
+      const rebetWager = Math.round(Number(document.getElementById('bjRebetInput').value));
+      startBlackjackHand(name, rebetWager, available);
+    });
+  }
 }
 
 // ---------- Activity feed ----------
@@ -2688,6 +2732,7 @@ document.getElementById('leaderboardBtn').addEventListener('click', () => { clos
 document.getElementById('randomizerBtn').addEventListener('click', () => { closeAppMenu(); openRandomizer(); });
 document.getElementById('shopBtn').addEventListener('click', () => { closeAppMenu(); openShop(); });
 document.getElementById('moderatorBtn').addEventListener('click', openModerator);
+document.getElementById('creditBadge').addEventListener('click', openLeaderboard);
 document.getElementById('gameBtn').addEventListener('click', () => { closeAppMenu(); openGame(); });
 document.getElementById('blackjackBtn').addEventListener('click', () => { closeAppMenu(); openBlackjack(); });
 
