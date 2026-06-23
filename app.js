@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622x') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622z') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1212,7 +1212,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260622x`;
+    courtImageEl.src = `${courtItem.image}?v=20260622z`;
   }
 
   const modal = document.getElementById('gameModal');
@@ -2300,9 +2300,11 @@ function computeActivityFeed(limit = 8) {
 
   Object.values(profiles).forEach(profile => {
     (profile.credits || []).forEach(credit => {
-      const gameEventType = credit.gameType === 'blackjack' ? 'blackjack_result' : credit.gameType === 'roulette' ? 'roulette_result' : 'game_result';
+      // Blackjack/Roulette results stay private to the player — only Tennis,
+      // daily rewards, and moderator credits show up in the shared feed.
+      if (credit.gameType === 'blackjack' || credit.gameType === 'roulette') return;
       events.push({
-        type: credit.source === 'daily' ? 'daily_reward' : (credit.source === 'game' ? gameEventType : 'moderator_credit'),
+        type: credit.source === 'daily' ? 'daily_reward' : (credit.source === 'game' ? 'game_result' : 'moderator_credit'),
         timestamp: credit.awardedAt,
         creditedName: profile.displayName,
         points: credit.displayPoints ?? credit.points,
@@ -2358,8 +2360,6 @@ function activityText(item) {
     case 'daily_reward':
       return `${authorBadgeHtml(item.creditedName)} claimed their daily reward ${pointsBadge(item.points)}`;
     case 'game_result':
-    case 'blackjack_result':
-    case 'roulette_result':
       return `${authorBadgeHtml(item.creditedName)} ${escapeHtml(item.reason)} ${pointsBadge(item.points)}`;
     case 'site_update':
       return `<strong>New Update:</strong> ${escapeHtml(item.message)}`;
@@ -2369,7 +2369,7 @@ function activityText(item) {
 }
 
 function activityIcon(type) {
-  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', reply_added: '💬', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', blackjack_result: '🃏', roulette_result: '🎡', site_update: '📢' }[type] || '•';
+  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', reply_added: '💬', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', site_update: '📢' }[type] || '•';
 }
 
 function renderActivityFeed() {

@@ -1423,6 +1423,15 @@ main {
 .roulette-bet-btn.is-red { color: #d62839; }
 .roulette-bet-btn.is-black { color: #1a1a1a; }
 
+/* Number spots reuse .is-red/.is-black for their colored background, but
+   need white text — without this, the rules above (same specificity, same
+   color name as the background) make the number invisible on its own tile. */
+.roulette-number-spot.is-red,
+.roulette-number-spot.is-black,
+.roulette-number-spot.is-green {
+  color: white;
+}
+
 .roulette-bet-btn.has-chip {
   box-shadow: 0 0 0 3px var(--sunset) inset;
 }
