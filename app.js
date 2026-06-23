@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622j') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622l') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -137,13 +137,45 @@ function bubbleOutlineCss(styleId, colorId) {
   return `border: ${styleItem.width} ${styleItem.borderStyle} ${hex};`;
 }
 
+// Generic colors for now — real custom racket/court/ball art comes later.
+const TENNIS_RACKET_COST = 15;
+const TENNIS_BALL_COST = 15;
+const TENNIS_COURT_COST = 20;
+
+const SHOP_TENNIS_RACKETS = [
+  { id: 'racket_crimson', label: 'Crimson', hex: '#e63946', cost: TENNIS_RACKET_COST },
+  { id: 'racket_electric_blue', label: 'Electric Blue', hex: '#1e6fff', cost: TENNIS_RACKET_COST },
+  { id: 'racket_emerald', label: 'Emerald', hex: '#0f9a5e', cost: TENNIS_RACKET_COST },
+  { id: 'racket_gold', label: 'Gold', hex: '#f4c542', cost: TENNIS_RACKET_COST },
+  { id: 'racket_hot_pink', label: 'Hot Pink', hex: '#e0298f', cost: TENNIS_RACKET_COST },
+  { id: 'racket_slate', label: 'Slate', hex: '#4a5568', cost: TENNIS_RACKET_COST },
+];
+
+const SHOP_TENNIS_BALLS = [
+  { id: 'ball_neon_yellow', label: 'Neon Yellow', hex: '#d9ff4b', cost: TENNIS_BALL_COST },
+  { id: 'ball_hot_pink', label: 'Hot Pink', hex: '#ff5cb3', cost: TENNIS_BALL_COST },
+  { id: 'ball_orange', label: 'Orange', hex: '#ff8c42', cost: TENNIS_BALL_COST },
+  { id: 'ball_electric_blue', label: 'Electric Blue', hex: '#4cc9f0', cost: TENNIS_BALL_COST },
+  { id: 'ball_crimson', label: 'Crimson', hex: '#e63946', cost: TENNIS_BALL_COST },
+];
+
+const SHOP_TENNIS_COURTS = [
+  { id: 'court_clay', label: 'Clay Red', hex: '#8a3f20', cost: TENNIS_COURT_COST },
+  { id: 'court_grass', label: 'Grass Green', hex: '#1f4d1f', cost: TENNIS_COURT_COST },
+  { id: 'court_purple', label: 'Royal Purple', hex: '#3b2a5e', cost: TENNIS_COURT_COST },
+  { id: 'court_charcoal', label: 'Charcoal', hex: '#1a1a1a', cost: TENNIS_COURT_COST },
+  { id: 'court_teal', label: 'Ocean Teal', hex: '#0e4d52', cost: TENNIS_COURT_COST },
+];
+
 const SHOP_CATALOG = {
   icon: SHOP_ICONS, color: SHOP_COLORS, skin: SHOP_SKINS,
   outlineStyle: SHOP_OUTLINE_STYLES, outlineColor: SHOP_OUTLINE_COLORS,
+  tennisRacket: SHOP_TENNIS_RACKETS, tennisBall: SHOP_TENNIS_BALLS, tennisCourt: SHOP_TENNIS_COURTS,
 };
 const EQUIP_FIELD = {
   icon: 'equippedIcon', color: 'equippedColor', skin: 'equippedSkin',
   outlineStyle: 'equippedOutlineStyle', outlineColor: 'equippedOutlineColor',
+  tennisRacket: 'equippedTennisRacket', tennisBall: 'equippedTennisBall', tennisCourt: 'equippedTennisCourt',
 };
 const COUNTRIES = ['Hawaii', 'Japan', 'Las Vegas'];
 const COUNTRY_EMOJI = { Hawaii: '🌴', Japan: '🗻', 'Las Vegas': '🎰' };
@@ -700,13 +732,16 @@ function openShop() {
     { category: 'skin', title: '✨ Memory Skins', items: SHOP_SKINS },
     { category: 'outlineStyle', title: '🔲 Outline Style', items: SHOP_OUTLINE_STYLES },
     { category: 'outlineColor', title: '🖌️ Outline Color', items: SHOP_OUTLINE_COLORS },
+    { category: 'tennisRacket', title: '🎾 Tennis Racket Color', items: SHOP_TENNIS_RACKETS },
+    { category: 'tennisBall', title: '🎾 Tennis Ball Color', items: SHOP_TENNIS_BALLS },
+    { category: 'tennisCourt', title: '🎾 Tennis Court Color', items: SHOP_TENNIS_COURTS },
   ];
 
   const modal = document.getElementById('shopModal');
   modal.innerHTML = `
     <button class="modal-close" id="shopCloseBtn">✕</button>
     <h2>🛍️ Shop</h2>
-    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Basic skins ${BASIC_SKIN_COST} pts · Custom skins ${SKIN_COST} pts · Outline style ${OUTLINE_STYLE_COST} pts · Outline color ${OUTLINE_COLOR_COST} pts · ✨ Dynamic skins/outlines ${ANIMATED_COST} pts</p>
+    <p class="leaderboard-legend">Icons ${ICON_COST} pts · Name colors ${COLOR_COST} pts · Basic skins ${BASIC_SKIN_COST} pts · Custom skins ${SKIN_COST} pts · Outline style ${OUTLINE_STYLE_COST} pts · Outline color ${OUTLINE_COLOR_COST} pts · ✨ Dynamic skins/outlines ${ANIMATED_COST} pts · 🎾 Tennis racket/ball ${TENNIS_RACKET_COST} pts · 🎾 Tennis court ${TENNIS_COURT_COST} pts</p>
 
     <div class="shop-name-field">
       <label>Who are you?</label>
@@ -964,15 +999,17 @@ function todayDateString() {
 
 function renderDailyRewardBubble() {
   const bubble = document.getElementById('dailyRewardBubble');
-  const text = document.getElementById('dailyRewardText');
+  const icon = document.getElementById('dailyRewardIcon');
   const name = getSavedAuthorName();
   const profile = name ? getProfile(name) : null;
   if (profile?.lastDailyClaim === todayDateString()) {
     bubble.classList.add('claimed');
-    text.textContent = '✓ Daily reward claimed — come back tomorrow!';
+    bubble.title = 'Daily reward claimed — come back tomorrow!';
+    icon.textContent = '✅';
   } else {
     bubble.classList.remove('claimed');
-    text.textContent = `🎁 Daily Reward — Claim +${DAILY_REWARD_POINTS} pts`;
+    bubble.title = `Daily Reward — Claim +${DAILY_REWARD_POINTS} pts`;
+    icon.textContent = '🎁';
   }
 }
 
@@ -1004,19 +1041,31 @@ async function claimDailyReward() {
 
 // ---------- Tennis mini-game ----------
 // Best of 3 matches — first point wins a match, first to win 2 matches wins
-// the series. Entry fee is deducted up front (like a Shop purchase); winning
-// the series credits the prize on top, losing just keeps the entry fee gone.
-const GAME_ENTRY_COST = 10;
-const GAME_WIN_POINTS = 20;
+// the series. Entry fee is a flat wager deducted up front (like a Shop
+// purchase) no matter the difficulty; winning the series credits the prize
+// for that difficulty on top, losing just keeps the entry fee gone.
+const GAME_ENTRY_COST = 5;
 const ROUND_WIN_SCORE = 1;
 const MATCH_WINS_NEEDED = 2;
 const TENNIS_HAND_KEY = 'food_memory_album_tennis_hand';
+const TENNIS_DIFFICULTY_KEY = 'food_memory_album_tennis_difficulty';
+const TENNIS_DIFFICULTY_CONFIG = {
+  easy: { label: 'Easy', emoji: '🟢', cpuSpeed: 2.2, randomness: 55, winPoints: 5 },
+  medium: { label: 'Medium', emoji: '🟡', cpuSpeed: 3.5, randomness: 30, winPoints: 10 },
+  hard: { label: 'Hard', emoji: '🔴', cpuSpeed: 5.5, randomness: 10, winPoints: 20 },
+};
 
 function getSavedHandedness() {
   return localStorage.getItem(TENNIS_HAND_KEY) || 'right';
 }
 function saveHandedness(hand) {
   localStorage.setItem(TENNIS_HAND_KEY, hand);
+}
+function getSavedDifficulty() {
+  return localStorage.getItem(TENNIS_DIFFICULTY_KEY) || 'medium';
+}
+function saveDifficulty(difficulty) {
+  localStorage.setItem(TENNIS_DIFFICULTY_KEY, difficulty);
 }
 
 let gameState = null;
@@ -1028,11 +1077,13 @@ function openGame() {
   const profile = name ? getProfile(name) : null;
   const available = name ? (getRawPoints(name) - (profile?.spentPoints || 0)) : 0;
   const hand = getSavedHandedness();
+  const difficulty = getSavedDifficulty();
+  const winPoints = TENNIS_DIFFICULTY_CONFIG[difficulty].winPoints;
   const modal = document.getElementById('gameModal');
   modal.innerHTML = `
     <button class="modal-close" id="gameCloseBtn">✕</button>
     <h2>🎾 Tennis</h2>
-    <p class="hint">Best of 3 — first point wins a match, first to win 2 matches takes the series. Entry costs ${GAME_ENTRY_COST} pts. Win the series for +${GAME_WIN_POINTS} pts — lose, and your entry fee is gone. Slide your finger up and down on the bar beside the court to move your racket.</p>
+    <p class="hint">Best of 3 — first point wins a match, first to win 2 matches takes the series. Entry costs ${GAME_ENTRY_COST} pts no matter the difficulty. Win the series for +${winPoints} pts — lose, and your entry fee is gone. Slide your finger up and down on the bar beside the court to move your racket.</p>
     <div class="shop-name-field">
       <label>Who's playing?</label>
       <input type="text" id="gameNameInput" placeholder="Your name" value="${escapeHtml(name)}">
@@ -1042,6 +1093,17 @@ function openGame() {
       <div class="tennis-hand-picker">
         <button type="button" class="tennis-hand-btn ${hand === 'left' ? 'active' : ''}" data-hand="left">🤚 Left-handed</button>
         <button type="button" class="tennis-hand-btn ${hand === 'right' ? 'active' : ''}" data-hand="right">✋ Right-handed</button>
+      </div>
+    </div>
+    <div class="shop-name-field">
+      <label>Choose your difficulty</label>
+      <div class="tennis-difficulty-picker">
+        ${Object.entries(TENNIS_DIFFICULTY_CONFIG).map(([id, cfg]) => `
+          <button type="button" class="tennis-diff-btn ${difficulty === id ? 'active' : ''}" data-diff="${id}">
+            <span class="tennis-diff-label">${cfg.emoji} ${cfg.label}</span>
+            <span class="tennis-diff-prize">Win +${cfg.winPoints}</span>
+          </button>
+        `).join('')}
       </div>
     </div>
     ${name ? `<p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>` : `<p class="hint">Type your name above to play.</p>`}
@@ -1057,6 +1119,12 @@ function openGame() {
   document.querySelectorAll('.tennis-hand-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       saveHandedness(btn.dataset.hand);
+      openGame();
+    });
+  });
+  document.querySelectorAll('.tennis-diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      saveDifficulty(btn.dataset.diff);
       openGame();
     });
   });
@@ -1106,10 +1174,17 @@ async function startGameMatch(name) {
 
 function renderGameCanvas(name) {
   const hand = getSavedHandedness();
+  const difficulty = getSavedDifficulty();
+  const diffConfig = TENNIS_DIFFICULTY_CONFIG[difficulty];
+  const profile = getProfile(name);
+  const racketColor = SHOP_TENNIS_RACKETS.find(r => r.id === profile?.equippedTennisRacket)?.hex || '#ffffff';
+  const ballColor = SHOP_TENNIS_BALLS.find(b => b.id === profile?.equippedTennisBall)?.hex || '#ffffff';
+  const courtColor = SHOP_TENNIS_COURTS.find(c => c.id === profile?.equippedTennisCourt)?.hex || '#0c2b2e';
+
   const modal = document.getElementById('gameModal');
   modal.innerHTML = `
     <button class="modal-close" id="gameCloseBtn">✕</button>
-    <h2 id="tennisGameTitle">🎾 Tennis — Match 1</h2>
+    <h2 id="tennisGameTitle">🎾 Tennis — Match 1 · ${diffConfig.emoji} ${diffConfig.label}</h2>
     <div class="tennis-scoreboard">
       <span id="tennisPlayerScore">You: 0</span>
       <span id="tennisMatchScore">Series: 0 – 0</span>
@@ -1117,7 +1192,7 @@ function renderGameCanvas(name) {
     </div>
     <div class="tennis-play-area ${hand === 'right' ? 'hand-right' : ''}">
       <div class="tennis-slider-track" id="tennisSliderTrack">
-        <div class="tennis-slider-thumb" id="tennisSliderThumb"></div>
+        <div class="tennis-slider-thumb" id="tennisSliderThumb" style="background:${racketColor};"></div>
       </div>
       <div class="tennis-court-wrap">
         <canvas id="tennisCanvas" width="600" height="360"></canvas>
@@ -1146,6 +1221,13 @@ function renderGameCanvas(name) {
     gameNum: 1,
     running: true,
     paused: true,
+    difficulty,
+    cpuSpeed: diffConfig.cpuSpeed,
+    cpuRandomness: diffConfig.randomness,
+    winPoints: diffConfig.winPoints,
+    racketColor,
+    ballColor,
+    courtColor,
   };
 
   const track = document.getElementById('tennisSliderTrack');
@@ -1206,13 +1288,12 @@ function gameLoop() {
 
   if (g.ballY <= 0 || g.ballY >= g.h) g.ballVY *= -1;
 
-  // Medium-difficulty CPU: capped speed plus a little aim imprecision, so it
-  // tracks the ball but isn't perfect.
+  // CPU speed/aim-imprecision scale with the chosen difficulty (set in
+  // renderGameCanvas from TENNIS_DIFFICULTY_CONFIG).
   const cpuCenter = g.cpuY + g.paddleH / 2;
-  const targetY = g.ballY + (Math.random() - 0.5) * 30;
-  const cpuSpeed = 3.5;
-  if (cpuCenter < targetY - 5) g.cpuY += cpuSpeed;
-  else if (cpuCenter > targetY + 5) g.cpuY -= cpuSpeed;
+  const targetY = g.ballY + (Math.random() - 0.5) * g.cpuRandomness;
+  if (cpuCenter < targetY - 5) g.cpuY += g.cpuSpeed;
+  else if (cpuCenter > targetY + 5) g.cpuY -= g.cpuSpeed;
   g.cpuY = Math.max(0, Math.min(g.h - g.paddleH, g.cpuY));
 
   if (g.ballX <= g.paddleW + 6 && g.ballX > 0 && g.ballY >= g.playerY && g.ballY <= g.playerY + g.paddleH && g.ballVX < 0) {
@@ -1244,7 +1325,7 @@ function gameLoop() {
 
 function drawGame(g) {
   const ctx = g.ctx;
-  ctx.fillStyle = '#0c2b2e';
+  ctx.fillStyle = g.courtColor;
   ctx.fillRect(0, 0, g.w, g.h);
   ctx.strokeStyle = 'rgba(255,255,255,0.3)';
   ctx.setLineDash([6, 10]);
@@ -1253,9 +1334,11 @@ function drawGame(g) {
   ctx.lineTo(g.w / 2, g.h);
   ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = g.racketColor;
   ctx.fillRect(4, g.playerY, g.paddleW, g.paddleH);
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(g.w - g.paddleW - 4, g.cpuY, g.paddleW, g.paddleH);
+  ctx.fillStyle = g.ballColor;
   ctx.beginPath();
   ctx.arc(g.ballX, g.ballY, 7, 0, Math.PI * 2);
   ctx.fill();
@@ -1278,7 +1361,8 @@ function endGameRound() {
   g.cpuScore = 0;
   g.paused = true;
   resetBall(g, Math.random() < 0.5 ? 1 : -1);
-  document.getElementById('tennisGameTitle').textContent = `🎾 Tennis — Match ${g.gameNum}`;
+  const diffConfig = TENNIS_DIFFICULTY_CONFIG[g.difficulty];
+  document.getElementById('tennisGameTitle').textContent = `🎾 Tennis — Match ${g.gameNum} · ${diffConfig.emoji} ${diffConfig.label}`;
   document.getElementById('tennisMatchScore').textContent = `Series: ${g.roundsWonPlayer} – ${g.roundsWonCpu}`;
   drawGame(g);
   const overlay = document.getElementById('tennisStartOverlay');
@@ -1294,7 +1378,7 @@ async function endGameMatch(playerWon) {
   const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
 
   if (playerWon) {
-    const credits = [...(profile.credits || []), { points: GAME_WIN_POINTS, reason: 'won a Tennis series', source: 'game', awardedAt: Date.now() }];
+    const credits = [...(profile.credits || []), { points: gameState.winPoints, reason: 'won a Tennis series', source: 'game', awardedAt: Date.now() }];
     const updates = { displayName: name, credits };
     try {
       await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
@@ -1313,7 +1397,7 @@ async function endGameMatch(playerWon) {
     <div class="randomizer-result">
       <div class="randomizer-dice">${playerWon ? '🏆' : '😢'}</div>
       <h2>${playerWon ? 'You won the series!' : 'You lost the series.'}</h2>
-      <p class="hint">${playerWon ? `+${GAME_WIN_POINTS} pts awarded!` : `Your ${GAME_ENTRY_COST} pt entry fee is gone — better luck next time!`}</p>
+      <p class="hint">${playerWon ? `+${gameState.winPoints} pts awarded!` : `Your ${GAME_ENTRY_COST} pt entry fee is gone — better luck next time!`}</p>
     </div>
     <div class="modal-actions">
       <button type="button" class="btn btn-primary" id="gamePlayAgainBtn">🎾 Play Again</button>
@@ -2237,11 +2321,25 @@ document.getElementById('deletePlaceBtn').addEventListener('click', handleDelete
 document.getElementById('findAddressBtn').addEventListener('click', findAddress);
 document.getElementById('findWebsiteBtn').addEventListener('click', findWebsite);
 
-document.getElementById('leaderboardBtn').addEventListener('click', openLeaderboard);
-document.getElementById('randomizerBtn').addEventListener('click', openRandomizer);
-document.getElementById('shopBtn').addEventListener('click', openShop);
+document.getElementById('leaderboardBtn').addEventListener('click', () => { closeAppMenu(); openLeaderboard(); });
+document.getElementById('randomizerBtn').addEventListener('click', () => { closeAppMenu(); openRandomizer(); });
+document.getElementById('shopBtn').addEventListener('click', () => { closeAppMenu(); openShop(); });
 document.getElementById('moderatorBtn').addEventListener('click', openModerator);
-document.getElementById('gameBtn').addEventListener('click', openGame);
+document.getElementById('gameBtn').addEventListener('click', () => { closeAppMenu(); openGame(); });
+
+document.getElementById('appMenuBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('appMenuPanel').classList.toggle('hidden');
+});
+function closeAppMenu() {
+  document.getElementById('appMenuPanel').classList.add('hidden');
+}
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('appMenuPanel');
+  if (!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target.id !== 'appMenuBtn') {
+    closeAppMenu();
+  }
+});
 
 document.getElementById('searchBox').addEventListener('input', (e) => {
   state.search = e.target.value;

@@ -173,6 +173,7 @@ main {
 .search-row {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   flex: 1;
   min-width: 220px;
@@ -187,6 +188,11 @@ main {
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.search-row input[type="search"] {
+  flex-shrink: 1;
 }
 
 .btn-filters:hover {
@@ -224,35 +230,156 @@ main {
   width: 100%;
 }
 
-.daily-reward-bubble {
-  display: inline-flex;
+.daily-reward-circle {
+  position: fixed;
+  top: 130px;
+  right: 18px;
+  z-index: 40;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  border: 3px solid white;
   background: linear-gradient(135deg, #ffe08a, #ffc2e2);
-  border: none;
-  border-radius: 999px;
-  padding: 10px 18px;
-  margin-bottom: 16px;
   cursor: pointer;
-  font-weight: 700;
-  color: var(--ink);
-  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
-  transition: transform 0.15s;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  animation: dailyRewardFloat 2.6s ease-in-out infinite;
 }
 
-.daily-reward-bubble:hover {
-  transform: translateY(-2px) scale(1.02);
+.daily-reward-circle:hover {
+  transform: scale(1.08);
 }
 
-.daily-reward-bubble.claimed {
+.daily-reward-circle.claimed {
   background: #e8e3d3;
-  color: #9b9582;
   cursor: default;
   box-shadow: none;
+  animation: none;
 }
 
 .daily-reward-icon {
-  font-size: 20px;
+  font-size: 26px;
+}
+
+@keyframes dailyRewardFloat {
+  0%, 100% { transform: translateY(0); box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+  50% { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(255,193,127,0.55); }
+}
+
+@media (max-width: 640px) {
+  .daily-reward-circle {
+    top: auto;
+    bottom: 80px;
+    right: 14px;
+    width: 50px;
+    height: 50px;
+  }
+  .daily-reward-icon {
+    font-size: 22px;
+  }
+}
+
+.menu-wrap {
+  position: relative;
+}
+
+.btn-menu {
+  background: white;
+  border: 2px solid var(--ocean);
+  color: var(--ocean-dark);
+  border-radius: var(--radius);
+  padding: 0 18px;
+  height: 100%;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-menu:hover {
+  background: var(--sand);
+}
+
+.app-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  width: 260px;
+  background: #fdf8ec;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  padding: 14px 18px 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  font-family: var(--font-display);
+}
+
+.app-menu-panel.hidden {
+  display: none;
+}
+
+.app-menu-heading {
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 2px dashed var(--ocean-dark);
+  letter-spacing: 0.02em;
+}
+
+.app-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 9px 2px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.app-menu-item-icon {
+  font-size: 18px;
+}
+
+.app-menu-item-label {
+  flex-shrink: 0;
+}
+
+.app-menu-dots {
+  flex: 1;
+  border-bottom: 2px dotted #b9ad8f;
+  margin: 0 4px;
+  height: 0;
+  align-self: center;
+}
+
+.app-menu-item:hover {
+  color: var(--coral);
+}
+
+.app-menu-item:hover .app-menu-dots {
+  border-bottom-color: var(--coral);
+}
+
+.btn-add-place {
+  background: linear-gradient(135deg, var(--coral), var(--sunset));
+  font-weight: 800;
+  box-shadow: 0 3px 12px rgba(252,164,124,0.55);
+  animation: addPlaceGlow 2.6s ease-in-out infinite;
+}
+
+@keyframes addPlaceGlow {
+  0%, 100% { box-shadow: 0 3px 12px rgba(252,164,124,0.55); }
+  50% { box-shadow: 0 5px 20px rgba(252,164,124,0.95); }
 }
 
 .moderator-corner-btn {
@@ -957,6 +1084,41 @@ main {
 }
 
 .tennis-hand-btn.active {
+  background: var(--ocean-dark);
+  color: white;
+  border-color: var(--ocean-dark);
+}
+
+.tennis-difficulty-picker {
+  display: flex;
+  gap: 8px;
+}
+
+.tennis-diff-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  font-weight: 700;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: white;
+  cursor: pointer;
+}
+
+.tennis-diff-label {
+  font-size: 14px;
+}
+
+.tennis-diff-prize {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.tennis-diff-btn.active {
   background: var(--ocean-dark);
   color: white;
   border-color: var(--ocean-dark);
