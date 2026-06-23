@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622w') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622x') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1212,7 +1212,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260622w`;
+    courtImageEl.src = `${courtItem.image}?v=20260622x`;
   }
 
   const modal = document.getElementById('gameModal');
@@ -1458,14 +1458,15 @@ async function endGameMatch(playerWon) {
 // 3:2, regular win pays 1:1, push returns the bet. Hit/Stand/Double Down
 // only (no split). Wager is escrowed via spentPoints when the hand is
 // dealt, same pattern as the Tennis entry fee.
-const BLACKJACK_ALLOWED_NAMES = ['bdl', 'yee ma', 'kenny', 'ma ma'];
+// Shared allowlist for both casino-style games (Blackjack and Roulette).
+const CASINO_ALLOWED_NAMES = ['bdl', 'yee ma', 'kenny', 'ma ma'];
 const BLACKJACK_MIN_BET = 5;
 const BLACKJACK_MAX_BET = 200;
 const BLACKJACK_SUITS = ['♠', '♥', '♦', '♣'];
 const BLACKJACK_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
-function isBlackjackAllowed(name) {
-  return BLACKJACK_ALLOWED_NAMES.includes(normalizeName(name));
+function isCasinoGameAllowed(name) {
+  return CASINO_ALLOWED_NAMES.includes(normalizeName(name));
 }
 
 let blackjackState = null;
@@ -1475,7 +1476,7 @@ function openBlackjack() {
   const name = getSavedAuthorName();
   const profile = name ? getProfile(name) : null;
   const available = name ? (getRawPoints(name) - (profile?.spentPoints || 0)) : 0;
-  const allowed = name && isBlackjackAllowed(name);
+  const allowed = name && isCasinoGameAllowed(name);
 
   const modal = document.getElementById('blackjackModal');
   modal.innerHTML = `
@@ -1565,7 +1566,7 @@ function isBlackjackHand(cards) {
 }
 
 async function startBlackjackHand(name, wager, available) {
-  if (!name || !isBlackjackAllowed(name)) return;
+  if (!name || !isCasinoGameAllowed(name)) return;
   if (!Number.isFinite(wager) || wager < BLACKJACK_MIN_BET || wager > Math.min(BLACKJACK_MAX_BET, available)) {
     alert(`Wager must be between ${BLACKJACK_MIN_BET} and ${Math.min(BLACKJACK_MAX_BET, available)} pts.`);
     return;
@@ -1821,6 +1822,8 @@ function renderBlackjackResult(outcome, netPoints, wager) {
 // chip total is already sitting there. When the clock hits zero the board
 // locks, the wheel spins, and every placed bet is settled against the one
 // result. Escrow only touches Firestore once (at lock), not per chip tap.
+// Same CASINO_ALLOWED_NAMES gate as Blackjack — everyone else gets the
+// "you must be 21" message.
 const ROULETTE_CHIP_VALUES = [5, 10];
 const ROULETTE_BET_SECONDS = 30;
 const ROULETTE_MAX_TOTAL_BET = 200;
@@ -1865,12 +1868,13 @@ function openRoulette() {
   const name = getSavedAuthorName();
   const profile = name ? getProfile(name) : null;
   const available = name ? (getRawPoints(name) - (profile?.spentPoints || 0)) : 0;
+  const phase = !name ? 'needs_name' : !isCasinoGameAllowed(name) ? 'not_allowed' : 'betting';
   rouletteTable = {
     name,
     available,
     selectedChip: ROULETTE_CHIP_VALUES[0],
     bets: {},
-    phase: name ? 'betting' : 'needs_name',
+    phase,
     timerSeconds: ROULETTE_BET_SECONDS,
     timerHandle: null,
     lastResult: null,
@@ -1924,15 +1928,22 @@ function renderRouletteTable() {
   const t = rouletteTable;
   const modal = document.getElementById('rouletteGameModal');
 
-  if (!t || t.phase === 'needs_name') {
+  if (!t || t.phase === 'needs_name' || t.phase === 'not_allowed') {
     modal.innerHTML = `
       <button class="modal-close" id="rouletteCloseBtn">✕</button>
       <h2>🎡 Roulette</h2>
       <div class="shop-name-field">
         <label>Who's playing?</label>
-        <input type="text" id="rouletteNameInput" placeholder="Your name" value="">
+        <input type="text" id="rouletteNameInput" placeholder="Your name" value="${t?.phase === 'not_allowed' ? escapeHtml(t.name) : ''}">
       </div>
-      <p class="hint">Type your name above to play.</p>
+      ${t?.phase === 'not_allowed' ? `
+        <div class="bj-locked">
+          <div class="bj-locked-emoji">🔒</div>
+          <p>You must be 21 to play this game.</p>
+        </div>
+      ` : `
+        <p class="hint">Type your name above to play.</p>
+      `}
     `;
     document.getElementById('rouletteCloseBtn').addEventListener('click', closeRoulette);
     document.getElementById('rouletteNameInput').addEventListener('change', (e) => {
