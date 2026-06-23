@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622z') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260623a') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -764,6 +764,18 @@ function openShop() {
     ${name ? `<p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>`
       : `<p class="hint">Type your name above to see your balance and start shopping.</p>`}
 
+    ${name && profile?.loanOwed > 0 ? `
+      <h3 class="shop-section-title">💰 Pay Back Loan</h3>
+      <p class="hint">You owe <strong>${profile.loanOwed} pts</strong> on a loan from a moderator.</p>
+      <div class="shop-name-field">
+        <label>Pay back how much? (max ${Math.min(profile.loanOwed, available)} pts)</label>
+        <input type="number" id="loanRepayInput" min="1" max="${Math.min(profile.loanOwed, available)}" step="1" value="${Math.min(profile.loanOwed, available)}">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="loanRepayBtn" ${available < 1 ? 'disabled' : ''}>Pay Back</button>
+      </div>
+    ` : ''}
+
     <h3 class="shop-section-title">👀 Live Preview</h3>
     <div id="shopLivePreviewBox">${renderShopPreviewBubble(profile)}</div>
 
@@ -815,6 +827,13 @@ function openShop() {
   modal.querySelectorAll('.shop-equip-btn').forEach(btn => {
     btn.addEventListener('click', () => equipItem(name, btn.dataset.category, btn.dataset.id || null));
   });
+  const loanRepayBtn = document.getElementById('loanRepayBtn');
+  if (loanRepayBtn) {
+    loanRepayBtn.addEventListener('click', () => {
+      const amount = Math.round(Number(document.getElementById('loanRepayInput').value));
+      submitLoanRepayment(name, amount);
+    });
+  }
 
   document.getElementById('shopOverlay').classList.remove('hidden');
 }
@@ -862,6 +881,31 @@ async function equipItem(name, category, itemId) {
   } catch (err) {
     console.error(err);
     alert('Could not update your equipped item — check your internet connection and try again.');
+  }
+}
+
+async function submitLoanRepayment(name, amount) {
+  if (!name) return;
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+  const available = getRawPoints(name) - (profile.spentPoints || 0);
+  const owed = profile.loanOwed || 0;
+  if (!Number.isFinite(amount) || amount < 1 || amount > owed || amount > available) {
+    alert(`You can pay back between 1 and ${Math.min(owed, available)} pts.`);
+    return;
+  }
+  const updates = {
+    displayName: name,
+    spentPoints: (profile.spentPoints || 0) + amount,
+    loanOwed: owed - amount,
+  };
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+    openShop();
+  } catch (err) {
+    console.error(err);
+    alert('Could not pay back the loan — check your internet connection and try again.');
   }
 }
 
@@ -916,7 +960,7 @@ function renderModeratorPinForm() {
 
 const SITE_ANNOUNCEMENTS_DOC_ID = '_announcements';
 
-function renderModeratorAwardForm(creditStatus, updateStatus) {
+function renderModeratorAwardForm(creditStatus, updateStatus, loanStatus) {
   const modal = document.getElementById('moderatorModal');
   const names = computeLeaderboard().map(c => c.name);
   modal.innerHTML = `
@@ -942,6 +986,21 @@ function renderModeratorAwardForm(creditStatus, updateStatus) {
       </div>
     </form>
 
+    <h3 class="shop-section-title">Give a Loan</h3>
+    <p class="hint">Advances points now that the player pays back later from the Shop — doesn't count toward their lifetime leaderboard total the way Award Credits does.</p>
+    <form class="place-form" id="moderatorLoanFormEl">
+      <label for="moderatorLoanNameInput">Who gets the loan?</label>
+      <input type="text" id="moderatorLoanNameInput" list="moderatorNameList" placeholder="Name" required>
+
+      <label for="moderatorLoanAmountInput">How many points?</label>
+      <input type="number" id="moderatorLoanAmountInput" placeholder="e.g. 50" min="1" required>
+
+      ${loanStatus ? `<p class="hint">${loanStatus}</p>` : ''}
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">Give Loan</button>
+      </div>
+    </form>
+
     <h3 class="shop-section-title">Post a Site Update</h3>
     <p class="hint">Posts an announcement at the top of Recent Activity for everyone.</p>
     <form class="place-form" id="moderatorUpdateFormEl">
@@ -957,6 +1016,10 @@ function renderModeratorAwardForm(creditStatus, updateStatus) {
   document.getElementById('moderatorAwardFormEl').addEventListener('submit', (e) => {
     e.preventDefault();
     submitModeratorCredit();
+  });
+  document.getElementById('moderatorLoanFormEl').addEventListener('submit', (e) => {
+    e.preventDefault();
+    submitModeratorLoan();
   });
   document.getElementById('moderatorUpdateFormEl').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -983,6 +1046,31 @@ async function submitModeratorCredit() {
   } catch (err) {
     console.error(err);
     alert('Could not award credit — check your internet connection and try again.');
+  }
+}
+
+async function submitModeratorLoan() {
+  const name = document.getElementById('moderatorLoanNameInput').value.trim();
+  const amount = Math.round(Number(document.getElementById('moderatorLoanAmountInput').value));
+  if (!name || !Number.isFinite(amount) || amount <= 0) return;
+
+  const key = normalizeName(name);
+  const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
+  // A loan frees up spending power now (like a refund) without inflating
+  // raw lifetime points/leaderboard rank; loanOwed tracks what's still due.
+  const updates = {
+    displayName: name,
+    spentPoints: (profile.spentPoints || 0) - amount,
+    loanOwed: (profile.loanOwed || 0) + amount,
+  };
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+    renderList();
+    renderModeratorAwardForm(null, null, `✅ Gave ${escapeHtml(name)} a ${amount} pt loan — they now owe ${updates.loanOwed} pts total.`);
+  } catch (err) {
+    console.error(err);
+    alert('Could not give the loan — check your internet connection and try again.');
   }
 }
 
@@ -1041,7 +1129,10 @@ function renderCreditBadge() {
   badge.innerHTML = `🪙 <strong>${available}</strong> pts`;
 }
 
+let claimingDailyReward = false;
+
 async function claimDailyReward() {
+  if (claimingDailyReward) return; // guards against a double-tap firing two credits before Firestore round-trips
   let name = getSavedAuthorName();
   if (!name) {
     name = (prompt("What's your name? (so we know whose daily reward to claim)") || '').trim();
@@ -1053,6 +1144,7 @@ async function claimDailyReward() {
   const profile = getProfile(name) || { spentPoints: 0, unlocked: [], credits: [] };
   if (profile.lastDailyClaim === today) return;
 
+  claimingDailyReward = true;
   const credits = [...(profile.credits || []), { points: DAILY_REWARD_POINTS, reason: 'daily visit reward', source: 'daily', awardedAt: Date.now() }];
   const updates = { displayName: name, credits, lastDailyClaim: today };
   try {
@@ -1064,6 +1156,8 @@ async function claimDailyReward() {
   } catch (err) {
     console.error(err);
     alert('Could not claim your daily reward — check your internet connection and try again.');
+  } finally {
+    claimingDailyReward = false;
   }
 }
 
@@ -1212,7 +1306,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260622z`;
+    courtImageEl.src = `${courtItem.image}?v=20260623a`;
   }
 
   const modal = document.getElementById('gameModal');
@@ -1828,6 +1922,11 @@ const ROULETTE_CHIP_VALUES = [5, 10];
 const ROULETTE_BET_SECONDS = 30;
 const ROULETTE_MAX_TOTAL_BET = 200;
 const ROULETTE_WHEEL_SIZE = 19; // numbers 0–18
+// 17:1 (not the traditional 35:1) because with only 19 pockets, 35:1 let a
+// player cover every number and walk away with a guaranteed profit — at
+// 17:1, covering the whole board is a guaranteed (small) loss, like a real
+// wheel's house edge.
+const ROULETTE_NUMBER_PAYOUT = 17;
 const ROULETTE_RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18]);
 const ROULETTE_OUTSIDE_BETS = [
   { id: 'red', label: 'Red', payout: 1, check: n => ROULETTE_RED_NUMBERS.has(n) },
@@ -1849,7 +1948,7 @@ function rouletteNumberColor(n) {
 function rouletteBetDefForSpot(spotId) {
   if (spotId.startsWith('num_')) {
     const n = Number(spotId.slice(4));
-    return { label: `Number ${n}`, payout: 35, check: result => result === n };
+    return { label: `Number ${n}`, payout: ROULETTE_NUMBER_PAYOUT, check: result => result === n };
   }
   return ROULETTE_OUTSIDE_BETS.find(b => b.id === spotId);
 }
@@ -1958,7 +2057,7 @@ function renderRouletteTable() {
   const numberSpots = [];
   for (let n = 0; n <= 18; n++) {
     const color = rouletteNumberColor(n);
-    numberSpots.push(rouletteBoardSpotHtml(`num_${n}`, n, 35, `roulette-number-spot is-${color}`));
+    numberSpots.push(rouletteBoardSpotHtml(`num_${n}`, n, ROULETTE_NUMBER_PAYOUT, `roulette-number-spot is-${color}`));
   }
 
   modal.innerHTML = `
@@ -2007,7 +2106,7 @@ function renderRouletteTable() {
       ${t.phase === 'result' ? `<button type="button" class="btn btn-primary" id="rouletteNewRoundBtn">🎡 New Round</button>` : ''}
       <button type="button" class="btn btn-secondary" id="rouletteDoneBtn">Close</button>
     </div>
-    <p class="hint">Tap a chip then tap the board to bet — double-tap a spot to double what's on it. Numbers pay 35:1, sixes pay 2:1, everything else pays 1:1.</p>
+    <p class="hint">Tap a chip then tap the board to bet — double-tap a spot to double what's on it. Numbers pay ${ROULETTE_NUMBER_PAYOUT}:1, sixes pay 2:1, everything else pays 1:1.</p>
   `;
 
   document.getElementById('rouletteCloseBtn').addEventListener('click', closeRoulette);
