@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260622i') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260622j') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1369,6 +1369,16 @@ function computeActivityFeed(limit = 8) {
           memoryAuthor: m.author,
         });
       }
+      (m.replies || []).forEach(r => {
+        events.push({
+          type: 'reply_added',
+          timestamp: r.createdAt,
+          placeId: place.id,
+          placeName: place.name,
+          author: r.author,
+          memoryAuthor: m.author,
+        });
+      });
     });
   });
 
@@ -1424,6 +1434,8 @@ function activityText(item) {
       return `${who} 👎 disliked ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'funny':
       return `${who} 😂 found ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong> funny`;
+    case 'reply_added':
+      return `${who} 💬 responded to ${escapeHtml(item.memoryAuthor)}'s memory on <strong>${escapeHtml(item.placeName)}</strong>`;
     case 'moderator_credit':
       return `Moderator credited ${authorBadgeHtml(item.creditedName)} ${pointsBadge(item.points)} for ${escapeHtml(item.reason)}`;
     case 'daily_reward':
@@ -1438,7 +1450,7 @@ function activityText(item) {
 }
 
 function activityIcon(type) {
-  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', site_update: '📢' }[type] || '•';
+  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', reply_added: '💬', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', site_update: '📢' }[type] || '•';
 }
 
 function renderActivityFeed() {

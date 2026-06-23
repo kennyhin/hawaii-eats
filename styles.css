@@ -41,6 +41,18 @@ header.top h1 {
   letter-spacing: 0.01em;
 }
 
+.site-title-text {
+  display: inline-block;
+  font-family: 'Bungee', var(--font-display);
+  letter-spacing: 0.03em;
+  animation: siteTitlePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes siteTitlePulse {
+  0%, 100% { transform: scale(1); text-shadow: 0 0 8px rgba(255,255,255,0.35); }
+  50% { transform: scale(1.08); text-shadow: 0 0 22px rgba(255,255,255,0.9); }
+}
+
 header.top p {
   margin: 0;
   opacity: 0.9;
