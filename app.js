@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260624b') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260624c') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1340,7 +1340,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260624b`;
+    courtImageEl.src = `${courtItem.image}?v=20260624c`;
   }
 
   const modal = document.getElementById('gameModal');
@@ -2572,21 +2572,27 @@ function closeRandomizer() {
 }
 
 // ---------- View modal ----------
+function photoCoverLegendHtml(place) {
+  if (!place.photos || place.photos.length < 2) return '';
+  return `⭐ filled = the card's cover photo · tap a ☆ to make that one the cover`;
+}
+
 function renderPhotoGalleryItems(place) {
   if (!place.photos || !place.photos.length) {
     return `<p class="no-memories">No photos yet — add the first one!</p>`;
   }
   const coverUrl = photoUrl(coverPhoto(place));
-  return place.photos.map((photo, i) => `
+  return place.photos.map((photo, i) => {
+    const isCover = photoUrl(photo) === coverUrl;
+    return `
     <div class="photo-wrap">
       <img src="${photoUrl(photo)}" alt="" data-idx="${i}">
       ${photoAuthor(photo) ? creditBadgeHtml(photoAuthor(photo)) : ''}
       <button type="button" class="photo-delete-btn" data-idx="${i}" title="Delete photo">✕</button>
-      ${photoUrl(photo) === coverUrl
-        ? `<span class="photo-cover-badge" title="This is the card's cover photo">📌 Cover</span>`
-        : `<button type="button" class="photo-cover-btn" data-idx="${i}" title="Set as cover photo">⭐ Set as cover</button>`}
+      <button type="button" class="photo-cover-btn ${isCover ? 'is-cover' : ''}" data-idx="${i}" ${isCover ? 'disabled' : ''} title="${isCover ? "This is the card's cover photo" : 'Set as cover photo'}">${isCover ? '⭐' : '☆'}</button>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function wireGalleryHandlers(place) {
@@ -2600,12 +2606,19 @@ function wireGalleryHandlers(place) {
       deletePhoto(place.id, Number(btn.dataset.idx));
     });
   });
-  gallery.querySelectorAll('.photo-cover-btn').forEach(btn => {
+  gallery.querySelectorAll('.photo-cover-btn:not(.is-cover)').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       setCoverPhoto(place.id, Number(btn.dataset.idx));
     });
   });
+}
+
+function refreshPhotoGallery(place) {
+  document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
+  const legend = document.getElementById('photoCoverLegend');
+  if (legend) legend.textContent = photoCoverLegendHtml(place);
+  wireGalleryHandlers(place);
 }
 
 async function setCoverPhoto(placeId, idx) {
@@ -2615,8 +2628,7 @@ async function setCoverPhoto(placeId, idx) {
   try {
     await setDoc(doc(db, PLACES_COLLECTION, placeId), { coverPhotoUrl: url }, { merge: true });
     place.coverPhotoUrl = url;
-    document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
-    wireGalleryHandlers(place);
+    refreshPhotoGallery(place);
     renderList();
   } catch (err) {
     console.error(err);
@@ -2637,8 +2649,7 @@ async function deletePhoto(placeId, idx) {
     await setDoc(doc(db, PLACES_COLLECTION, placeId), updates, { merge: true });
     place.photos = updated;
     if ('coverPhotoUrl' in updates) place.coverPhotoUrl = null;
-    document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
-    wireGalleryHandlers(place);
+    refreshPhotoGallery(place);
     renderList();
   } catch (err) {
     console.error(err);
@@ -2706,8 +2717,7 @@ async function handlePhotoUpload(e, placeId) {
         lastPhotoAddedAt: place.lastPhotoAddedAt,
         lastPhotoAddedBy: place.lastPhotoAddedBy,
       }, { merge: true });
-      document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
-      wireGalleryHandlers(place);
+      refreshPhotoGallery(place);
       uploadedCount += 1;
       flashLastPhoto();
     }
@@ -2777,6 +2787,7 @@ function openViewModal(id) {
         <button type="button" class="btn-add-photo" id="addPhotoBtn">📸 Add Photo (+${PHOTO_ADDED_POINTS} pts)</button>
         <input type="file" id="photoInput" accept="image/*" multiple class="visually-hidden">
       </div>
+      <p class="hint photo-cover-legend" id="photoCoverLegend">${photoCoverLegendHtml(place)}</p>
       <div class="photo-gallery" id="photoGallery">${renderPhotoGalleryItems(place)}</div>
     </div>
 

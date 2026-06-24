@@ -911,33 +911,35 @@ main {
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
-.photo-gallery .photo-cover-btn,
-.photo-gallery .photo-cover-badge {
-  position: absolute;
-  bottom: 6px;
-  left: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 999px;
-  padding: 3px 8px;
-  line-height: 1.4;
-  white-space: nowrap;
-}
-
 .photo-gallery .photo-cover-btn {
+  position: absolute;
+  top: -6px;
+  left: -6px;
   background: rgba(0,0,0,0.55);
   color: white;
   border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
   cursor: pointer;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 .photo-gallery .photo-cover-btn:hover {
   background: rgba(0,0,0,0.75);
 }
 
-.photo-gallery .photo-cover-badge {
-  background: var(--ocean-dark);
-  color: white;
+.photo-gallery .photo-cover-btn.is-cover {
+  background: #f4c542;
+  color: #5a4400;
+  cursor: default;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 0 0 2px rgba(244,197,66,0.4);
+}
+
+.photo-cover-legend {
+  margin: 4px 0 0;
 }
 
 @keyframes photoPop {
