@@ -913,8 +913,8 @@ main {
 
 .photo-gallery .photo-cover-btn {
   position: absolute;
-  top: -6px;
-  left: -6px;
+  bottom: 6px;
+  left: 6px;
   background: rgba(0,0,0,0.55);
   color: white;
   border: none;
@@ -936,10 +936,6 @@ main {
   color: #5a4400;
   cursor: default;
   box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 0 0 2px rgba(244,197,66,0.4);
-}
-
-.photo-cover-legend {
-  margin: 4px 0 0;
 }
 
 @keyframes photoPop {

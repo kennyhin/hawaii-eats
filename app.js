@@ -1,6 +1,6 @@
 import { db } from './firebase.js';
 import {
-  collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch, arrayUnion, arrayRemove,
+  collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch, arrayUnion, arrayRemove, runTransaction,
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 import { IMGBB_API_KEY } from './imgbb-config.js';
 
@@ -9,7 +9,11 @@ const PROFILES_COLLECTION = 'profiles';
 
 const PLACE_ADDED_POINTS = 3;
 const MEMORY_POSTED_POINTS = 2;
-const PHOTO_ADDED_POINTS = 2;
+const PHOTO_ADDED_POINTS = 3;
+// One-time bonus paid to whoever uploaded a photo, the moment it gets set as
+// a place's cover photo — tracked via coverBonusUrls (below) so toggling the
+// cover back and forth between someone's own photos can't re-farm it.
+const COVER_PHOTO_BONUS_POINTS = 4;
 
 const ICON_COST = 10;
 const COLOR_COST = 25;
@@ -92,7 +96,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260624d') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260624f') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -656,7 +660,7 @@ function openLeaderboard() {
   modal.innerHTML = `
     <button class="modal-close" id="leaderboardCloseBtn">✕</button>
     <h2>🏆 Top Contributors</h2>
-    <p class="leaderboard-legend">+${PLACE_ADDED_POINTS} pts for adding a place · +${MEMORY_POSTED_POINTS} pts for each memory you post · +${PHOTO_ADDED_POINTS} pts for each photo you add · Shop purchases subtract from your balance</p>
+    <p class="leaderboard-legend">+${PLACE_ADDED_POINTS} pts for adding a place · +${MEMORY_POSTED_POINTS} pts for each memory you post · +${PHOTO_ADDED_POINTS} pts for each photo you add · +${COVER_PHOTO_BONUS_POINTS} pts if your photo gets set as a place's cover · Shop purchases subtract from your balance</p>
     ${data.length ? `
       <div class="leaderboard-list">
         ${data.map((c, i) => {
@@ -1340,7 +1344,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260624d`;
+    courtImageEl.src = `${courtItem.image}?v=20260624f`;
   }
 
   const modal = document.getElementById('gameModal');
@@ -2437,7 +2441,7 @@ function computeActivityFeed(limit = 8) {
       // daily rewards, and moderator credits show up in the shared feed.
       if (credit.gameType === 'blackjack' || credit.gameType === 'roulette') return;
       events.push({
-        type: credit.source === 'daily' ? 'daily_reward' : (credit.source === 'game' ? 'game_result' : 'moderator_credit'),
+        type: credit.source === 'daily' ? 'daily_reward' : (credit.source === 'game' ? 'game_result' : (credit.source === 'cover_photo' ? 'cover_photo_bonus' : 'moderator_credit')),
         timestamp: credit.awardedAt,
         creditedName: profile.displayName,
         points: credit.displayPoints ?? credit.points,
@@ -2494,6 +2498,8 @@ function activityText(item) {
       return `${authorBadgeHtml(item.creditedName)} claimed their daily reward ${pointsBadge(item.points)}`;
     case 'game_result':
       return `${authorBadgeHtml(item.creditedName)} ${escapeHtml(item.reason)} ${pointsBadge(item.points)}`;
+    case 'cover_photo_bonus':
+      return `${authorBadgeHtml(item.creditedName)} ${escapeHtml(item.reason)} ${pointsBadge(item.points)}`;
     case 'site_update':
       return `<strong>New Update:</strong> ${escapeHtml(item.message)}`;
     default:
@@ -2502,7 +2508,7 @@ function activityText(item) {
 }
 
 function activityIcon(type) {
-  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', reply_added: '💬', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', site_update: '📢' }[type] || '•';
+  return { place_added: '🆕', photo_added: '📸', memory_added: '📝', like: '👍', dislike: '👎', funny: '😂', reply_added: '💬', moderator_credit: '🛡️', daily_reward: '🎁', game_result: '🎾', cover_photo_bonus: '⭐', site_update: '📢' }[type] || '•';
 }
 
 function renderActivityFeed() {
@@ -2572,11 +2578,6 @@ function closeRandomizer() {
 }
 
 // ---------- View modal ----------
-function photoCoverLegendHtml(place) {
-  if (!place.photos || place.photos.length < 2) return '';
-  return `⭐ filled = the card's cover photo · tap a ☆ to make that one the cover`;
-}
-
 function renderPhotoGalleryItems(place) {
   if (!place.photos || !place.photos.length) {
     return `<p class="no-memories">No photos yet — add the first one!</p>`;
@@ -2616,23 +2617,50 @@ function wireGalleryHandlers(place) {
 
 function refreshPhotoGallery(place) {
   document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
-  const legend = document.getElementById('photoCoverLegend');
-  if (legend) legend.textContent = photoCoverLegendHtml(place);
   wireGalleryHandlers(place);
 }
 
 async function setCoverPhoto(placeId, idx) {
   const place = places.find(p => p.id === placeId);
   if (!place || !place.photos || !place.photos[idx]) return;
-  const url = photoUrl(place.photos[idx]);
+  const photo = place.photos[idx];
+  const url = photoUrl(photo);
+  const author = photoAuthor(photo);
+  const alreadyBonused = (place.coverBonusUrls || []).includes(url);
   try {
-    await setDoc(doc(db, PLACES_COLLECTION, placeId), { coverPhotoUrl: url }, { merge: true });
+    const placeUpdates = { coverPhotoUrl: url };
+    if (author && !alreadyBonused) placeUpdates.coverBonusUrls = arrayUnion(url);
+    await setDoc(doc(db, PLACES_COLLECTION, placeId), placeUpdates, { merge: true });
     place.coverPhotoUrl = url;
+    if (author && !alreadyBonused) {
+      place.coverBonusUrls = [...(place.coverBonusUrls || []), url];
+      await awardCoverPhotoBonus(author, place.name);
+    }
     refreshPhotoGallery(place);
     renderList();
   } catch (err) {
     console.error(err);
     alert('Could not set the cover photo — check your internet connection and try again.');
+  }
+}
+
+async function awardCoverPhotoBonus(author, placeName) {
+  const key = normalizeName(author);
+  const profile = getProfile(author) || { spentPoints: 0, unlocked: [], credits: [] };
+  const credits = [...(profile.credits || []), {
+    points: COVER_PHOTO_BONUS_POINTS,
+    displayPoints: COVER_PHOTO_BONUS_POINTS,
+    reason: `had their photo set as the cover photo for ${placeName}`,
+    source: 'cover_photo',
+    awardedAt: Date.now(),
+  }];
+  const updates = { displayName: author, credits };
+  try {
+    await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
+    profiles[key] = { ...profile, ...updates };
+    renderActivityFeed();
+  } catch (err) {
+    console.error(err);
   }
 }
 
@@ -2797,7 +2825,6 @@ function openViewModal(id) {
         <button type="button" class="btn-add-photo" id="addPhotoBtn">📸 Add Photo (+${PHOTO_ADDED_POINTS} pts)</button>
         <input type="file" id="photoInput" accept="image/*" multiple class="visually-hidden">
       </div>
-      <p class="hint photo-cover-legend" id="photoCoverLegend">${photoCoverLegendHtml(place)}</p>
       <div class="photo-gallery" id="photoGallery">${renderPhotoGalleryItems(place)}</div>
     </div>
 
@@ -2990,6 +3017,24 @@ function openViewModal(id) {
   document.getElementById('viewOverlay').classList.remove('hidden');
 }
 
+// Reads the place's memories array fresh from the server inside a
+// transaction, applies `mutate` to it, and writes the result back — so
+// in-place edits (by memory id) can't race with a concurrent transaction
+// the way a plain client-read-then-overwrite would.
+async function updateMemoriesInTransaction(placeId, mutate) {
+  const ref = doc(db, PLACES_COLLECTION, placeId);
+  let updatedMemories;
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const current = snap.data()?.memories || [];
+    updatedMemories = mutate(current);
+    tx.set(ref, { memories: updatedMemories }, { merge: true });
+  });
+  const place = places.find(p => p.id === placeId);
+  if (place) place.memories = updatedMemories;
+  return updatedMemories;
+}
+
 async function submitMemory(placeId, rating, color, editingId) {
   const authorInput = document.getElementById('memoryAuthorInput');
   const textInput = document.getElementById('memoryTextInput');
@@ -3009,25 +3054,29 @@ async function submitMemory(placeId, rating, color, editingId) {
   if (!place) return;
 
   const chosenColor = color || BUBBLE_COLORS[0];
-  let updatedMemories;
-  if (editingId) {
-    updatedMemories = (place.memories || []).map(m =>
-      m.id === editingId ? { ...m, author, rating, text, color: chosenColor } : m
-    );
-  } else {
-    const newMemory = { id: uid(), author, rating, text, color: chosenColor, createdAt: Date.now() };
-    updatedMemories = [...(place.memories || []), newMemory];
-  }
 
   const postBtn = document.getElementById('postMemoryBtn');
   postBtn.disabled = true;
   postBtn.textContent = editingId ? 'Saving…' : 'Posting…';
 
   try {
-    await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
+    if (editingId) {
+      // Editing in place needs a transaction: the memory's other fields
+      // (reactions, replies) may have changed concurrently on the server.
+      await updateMemoriesInTransaction(placeId, (memories) =>
+        memories.map(m => m.id === editingId ? { ...m, author, rating, text, color: chosenColor } : m)
+      );
+    } else {
+      const newMemory = { id: uid(), author, rating, text, color: chosenColor, createdAt: Date.now() };
+      // arrayUnion appends to whatever the server's array actually is right
+      // now, instead of writing this client's possibly-stale full copy —
+      // otherwise two people adding memories to the same place at once could
+      // silently overwrite (lose) each other's post.
+      await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: arrayUnion(newMemory) }, { merge: true });
+      place.memories = [...(place.memories || []), newMemory];
+    }
     saveAuthorName(author);
     saveAuthorColor(chosenColor);
-    place.memories = updatedMemories;
     openViewModal(placeId);
   } catch (err) {
     console.error(err);
@@ -3041,10 +3090,11 @@ async function deleteMemory(placeId, memoryId) {
   if (!confirm('Delete this memory?')) return;
   const place = places.find(p => p.id === placeId);
   if (!place) return;
-  const updatedMemories = (place.memories || []).filter(m => m.id !== memoryId);
   try {
-    await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
-    place.memories = updatedMemories;
+    // Removal by id needs a transaction too: the memory may have picked up
+    // a concurrent reaction/reply since this client last saw it, so deleting
+    // its last-known-stale value with arrayRemove wouldn't reliably match.
+    await updateMemoriesInTransaction(placeId, (memories) => memories.filter(m => m.id !== memoryId));
     openViewModal(placeId);
   } catch (err) {
     console.error(err);
@@ -3060,30 +3110,27 @@ async function toggleReaction(placeId, memoryId, type) {
   const current = getReaction(memoryId);
   const next = current === type ? null : type;
 
-  const updatedMemories = (place.memories || []).map(m => {
-    if (m.id !== memoryId) return m;
-    const counts = { likes: m.likes || 0, dislikes: m.dislikes || 0, funny: m.funny || 0 };
-    if (current) {
-      const field = REACTION_COUNT_FIELD[current];
-      counts[field] = Math.max(0, counts[field] - 1);
-    }
-    if (next) {
-      const field = REACTION_COUNT_FIELD[next];
-      counts[field] = counts[field] + 1;
-    }
-    const updated = { ...m, ...counts };
-    if (next) {
-      updated.lastReactionType = next;
-      updated.lastReactionAuthor = getSavedAuthorName() || 'Someone';
-      updated.lastReactionAt = Date.now();
-    }
-    return updated;
-  });
-
   try {
-    await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
+    await updateMemoriesInTransaction(placeId, (memories) => memories.map(m => {
+      if (m.id !== memoryId) return m;
+      const counts = { likes: m.likes || 0, dislikes: m.dislikes || 0, funny: m.funny || 0 };
+      if (current) {
+        const field = REACTION_COUNT_FIELD[current];
+        counts[field] = Math.max(0, counts[field] - 1);
+      }
+      if (next) {
+        const field = REACTION_COUNT_FIELD[next];
+        counts[field] = counts[field] + 1;
+      }
+      const updated = { ...m, ...counts };
+      if (next) {
+        updated.lastReactionType = next;
+        updated.lastReactionAuthor = getSavedAuthorName() || 'Someone';
+        updated.lastReactionAt = Date.now();
+      }
+      return updated;
+    }));
     saveReaction(memoryId, next);
-    place.memories = updatedMemories;
     openViewModal(placeId);
   } catch (err) {
     console.error(err);
@@ -3100,14 +3147,12 @@ async function submitReply(placeId, memoryId, author, text) {
   if (!place) return;
 
   const newReply = { id: uid(), author, text, createdAt: Date.now() };
-  const updatedMemories = (place.memories || []).map(m =>
-    m.id === memoryId ? { ...m, replies: [...(m.replies || []), newReply] } : m
-  );
 
   try {
-    await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
+    await updateMemoriesInTransaction(placeId, (memories) => memories.map(m =>
+      m.id === memoryId ? { ...m, replies: [...(m.replies || []), newReply] } : m
+    ));
     saveAuthorName(author);
-    place.memories = updatedMemories;
     openViewModal(placeId);
   } catch (err) {
     console.error(err);
@@ -3119,12 +3164,10 @@ async function deleteReply(placeId, memoryId, replyId) {
   if (!confirm('Delete this reply?')) return;
   const place = places.find(p => p.id === placeId);
   if (!place) return;
-  const updatedMemories = (place.memories || []).map(m =>
-    m.id === memoryId ? { ...m, replies: (m.replies || []).filter(r => r.id !== replyId) } : m
-  );
   try {
-    await setDoc(doc(db, PLACES_COLLECTION, placeId), { memories: updatedMemories }, { merge: true });
-    place.memories = updatedMemories;
+    await updateMemoriesInTransaction(placeId, (memories) => memories.map(m =>
+      m.id === memoryId ? { ...m, replies: (m.replies || []).filter(r => r.id !== replyId) } : m
+    ));
     openViewModal(placeId);
   } catch (err) {
     console.error(err);
