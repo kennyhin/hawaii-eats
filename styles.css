@@ -1180,6 +1180,54 @@ main {
   border-color: var(--ocean-dark);
 }
 
+/* ---------- Runner mini-game ---------- */
+.runner-hud {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.runner-progress-track {
+  flex: 1;
+  height: 10px;
+  background: var(--sand);
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.runner-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--ocean-dark);
+  transition: width 0.1s linear;
+}
+
+#runnerEarnedLabel {
+  font-weight: 800;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.runner-canvas-wrap {
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+#runnerCanvas {
+  display: block;
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  aspect-ratio: 600 / 360;
+  margin: 0 auto;
+  border-radius: 12px;
+  touch-action: none;
+  background: #0b1f2e;
+}
+
 /* ---------- Blackjack mini-game ---------- */
 .bj-locked {
   text-align: center;

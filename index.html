@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260623a">
+<link rel="stylesheet" href="styles.css?v=20260623f">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 </head>
 <body>
@@ -78,6 +78,11 @@
           <button type="button" class="app-menu-item app-menu-subitem" id="rouletteBtn">
             <span class="app-menu-item-icon">🎡</span>
             <span class="app-menu-item-label">Roulette</span>
+            <span class="app-menu-dots"></span>
+          </button>
+          <button type="button" class="app-menu-item app-menu-subitem" id="runnerBtn">
+            <span class="app-menu-item-icon">🏃</span>
+            <span class="app-menu-item-label">Runner</span>
             <span class="app-menu-dots"></span>
           </button>
         </div>
@@ -187,6 +192,11 @@
   <div class="modal modal-wide" id="rouletteGameModal"></div>
 </div>
 
+<!-- Runner Modal -->
+<div class="overlay hidden" id="runnerOverlay">
+  <div class="modal modal-wide" id="runnerModal"></div>
+</div>
+
 <!-- Lightbox -->
 <div class="overlay hidden" id="lightboxOverlay">
   <button class="modal-close" id="lightboxCloseBtn" style="position:fixed; top:20px; right:20px;">✕</button>
@@ -203,7 +213,7 @@
 
 <!-- Bump the ?v= on these whenever app.js/styles.css/hawaii_seed.js change, so
      everyone's browser fetches the new version instead of a stale cached copy. -->
-<script src="hawaii_seed.js?v=20260623a"></script>
-<script type="module" src="app.js?v=20260623a"></script>
+<script src="hawaii_seed.js?v=20260623f"></script>
+<script type="module" src="app.js?v=20260623f"></script>
 </body>
 </html>
