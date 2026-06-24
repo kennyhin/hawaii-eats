@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260623a') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260624b') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -422,9 +422,19 @@ function groupByLetter(list) {
 
 const CATEGORY_DEFAULT_EMOJI = { eats: '🍽️', beaches: '🏖️', hikes: '🥾' };
 
+function coverPhoto(place) {
+  if (!place.photos || !place.photos.length) return null;
+  if (place.coverPhotoUrl) {
+    const chosen = place.photos.find(photo => photoUrl(photo) === place.coverPhotoUrl);
+    if (chosen) return chosen;
+  }
+  return place.photos[0];
+}
+
 function placeThumb(place) {
-  if (place.photos && place.photos.length > 0) {
-    return `<img src="${photoUrl(place.photos[0])}" alt="">`;
+  const photo = coverPhoto(place);
+  if (photo) {
+    return `<img src="${photoUrl(photo)}" alt="">`;
   }
   return CATEGORY_DEFAULT_EMOJI[place.category || 'eats'];
 }
@@ -1169,6 +1179,10 @@ async function claimDailyReward() {
 const GAME_ENTRY_COST = 5;
 const ROUND_WIN_SCORE = 1;
 const MATCH_WINS_NEEDED = 2;
+// Caps how many series a single person can farm points from per day —
+// tracked on the profile (tennisPlayDate/tennisPlayCount) the same way the
+// daily reward tracks lastDailyClaim.
+const TENNIS_DAILY_LIMIT = 10;
 const TENNIS_HAND_KEY = 'food_memory_album_tennis_hand';
 const TENNIS_DIFFICULTY_KEY = 'food_memory_album_tennis_difficulty';
 const TENNIS_DIFFICULTY_CONFIG = {
@@ -1193,6 +1207,11 @@ function saveDifficulty(difficulty) {
 let gameState = null;
 let gameAnimId = null;
 
+function tennisPlaysToday(profile) {
+  if (!profile || profile.tennisPlayDate !== todayDateString()) return 0;
+  return profile.tennisPlayCount || 0;
+}
+
 function openGame() {
   stopGameLoop();
   const name = getSavedAuthorName();
@@ -1201,11 +1220,13 @@ function openGame() {
   const hand = getSavedHandedness();
   const difficulty = getSavedDifficulty();
   const winPoints = TENNIS_DIFFICULTY_CONFIG[difficulty].winPoints;
+  const playsToday = tennisPlaysToday(profile);
+  const playsLeft = Math.max(0, TENNIS_DAILY_LIMIT - playsToday);
   const modal = document.getElementById('gameModal');
   modal.innerHTML = `
     <button class="modal-close" id="gameCloseBtn">✕</button>
     <h2>🎾 Tennis</h2>
-    <p class="hint">Best of 3 — first point wins a match, first to win 2 matches takes the series. Entry costs ${GAME_ENTRY_COST} pts no matter the difficulty. Win the series for +${winPoints} pts — lose, and your entry fee is gone. Slide your finger up and down on the bar beside the court to move your racket.</p>
+    <p class="hint">Best of 3 — first point wins a match, first to win 2 matches takes the series. Entry costs ${GAME_ENTRY_COST} pts no matter the difficulty. Win the series for +${winPoints} pts — lose, and your entry fee is gone. Slide your finger up and down on the bar beside the court to move your racket. Limited to ${TENNIS_DAILY_LIMIT} series a day per person.</p>
     <div class="shop-name-field">
       <label>Who's playing?</label>
       <input type="text" id="gameNameInput" placeholder="Your name" value="${escapeHtml(name)}">
@@ -1228,9 +1249,10 @@ function openGame() {
         `).join('')}
       </div>
     </div>
-    ${name ? `<p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend</p>` : `<p class="hint">Type your name above to play.</p>`}
+    ${name ? `<p class="shop-balance">You have <strong>${available}</strong> pt${available === 1 ? '' : 's'} to spend · <strong>${playsLeft}</strong> series left today</p>` : `<p class="hint">Type your name above to play.</p>`}
+    ${name && playsLeft <= 0 ? `<p class="hint">You've played ${TENNIS_DAILY_LIMIT} series today — come back tomorrow for more.</p>` : ''}
     <div class="modal-actions">
-      <button type="button" class="btn btn-primary" id="gameStartBtn" ${(!name || available < GAME_ENTRY_COST) ? 'disabled' : ''}>🎾 Start Series (-${GAME_ENTRY_COST} pts)</button>
+      <button type="button" class="btn btn-primary" id="gameStartBtn" ${(!name || available < GAME_ENTRY_COST || playsLeft <= 0) ? 'disabled' : ''}>🎾 Start Series (-${GAME_ENTRY_COST} pts)</button>
     </div>
   `;
   document.getElementById('gameCloseBtn').addEventListener('click', closeGame);
@@ -1281,7 +1303,19 @@ async function startGameMatch(name) {
     alert("You don't have enough points to play!");
     return;
   }
-  const updates = { displayName: name, spentPoints: (profile.spentPoints || 0) + GAME_ENTRY_COST };
+  const today = todayDateString();
+  const playsToday = tennisPlaysToday(profile);
+  if (playsToday >= TENNIS_DAILY_LIMIT) {
+    alert(`You've already played ${TENNIS_DAILY_LIMIT} series today — come back tomorrow!`);
+    openGame();
+    return;
+  }
+  const updates = {
+    displayName: name,
+    spentPoints: (profile.spentPoints || 0) + GAME_ENTRY_COST,
+    tennisPlayDate: today,
+    tennisPlayCount: playsToday + 1,
+  };
   try {
     await setDoc(doc(db, PROFILES_COLLECTION, key), updates, { merge: true });
     profiles[key] = { ...profile, ...updates };
@@ -1306,7 +1340,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260623a`;
+    courtImageEl.src = `${courtItem.image}?v=20260624b`;
   }
 
   const modal = document.getElementById('gameModal');
@@ -2513,7 +2547,7 @@ function renderRandomizerPick(pool) {
     <div class="randomizer-result">
       <div class="randomizer-dice">🎲</div>
       <p class="randomizer-tagline">Tonight's pick is...</p>
-      ${place.photos && place.photos.length ? `<img class="randomizer-photo" src="${photoUrl(place.photos[0])}" alt="">` : ''}
+      ${coverPhoto(place) ? `<img class="randomizer-photo" src="${photoUrl(coverPhoto(place))}" alt="">` : ''}
       <h2>${escapeHtml(place.name)}</h2>
       ${place.cuisine ? `<span class="cuisine-badge">${escapeHtml(place.cuisine)}</span>` : ''}
       ${place.distance ? `<span class="cuisine-badge">🥾 ${escapeHtml(place.distance)}</span>` : ''}
@@ -2542,11 +2576,15 @@ function renderPhotoGalleryItems(place) {
   if (!place.photos || !place.photos.length) {
     return `<p class="no-memories">No photos yet — add the first one!</p>`;
   }
+  const coverUrl = photoUrl(coverPhoto(place));
   return place.photos.map((photo, i) => `
     <div class="photo-wrap">
       <img src="${photoUrl(photo)}" alt="" data-idx="${i}">
       ${photoAuthor(photo) ? creditBadgeHtml(photoAuthor(photo)) : ''}
       <button type="button" class="photo-delete-btn" data-idx="${i}" title="Delete photo">✕</button>
+      ${photoUrl(photo) === coverUrl
+        ? `<span class="photo-cover-badge" title="This is the card's cover photo">📌 Cover</span>`
+        : `<button type="button" class="photo-cover-btn" data-idx="${i}" title="Set as cover photo">⭐ Set as cover</button>`}
     </div>
   `).join('');
 }
@@ -2562,18 +2600,46 @@ function wireGalleryHandlers(place) {
       deletePhoto(place.id, Number(btn.dataset.idx));
     });
   });
+  gallery.querySelectorAll('.photo-cover-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setCoverPhoto(place.id, Number(btn.dataset.idx));
+    });
+  });
+}
+
+async function setCoverPhoto(placeId, idx) {
+  const place = places.find(p => p.id === placeId);
+  if (!place || !place.photos || !place.photos[idx]) return;
+  const url = photoUrl(place.photos[idx]);
+  try {
+    await setDoc(doc(db, PLACES_COLLECTION, placeId), { coverPhotoUrl: url }, { merge: true });
+    place.coverPhotoUrl = url;
+    document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
+    wireGalleryHandlers(place);
+    renderList();
+  } catch (err) {
+    console.error(err);
+    alert('Could not set the cover photo — check your internet connection and try again.');
+  }
 }
 
 async function deletePhoto(placeId, idx) {
   if (!confirm('Delete this photo?')) return;
   const place = places.find(p => p.id === placeId);
   if (!place) return;
+  const deletedUrl = photoUrl(place.photos[idx]);
   const updated = (place.photos || []).filter((_, i) => i !== idx);
+  const updates = { photos: updated };
+  // If the deleted photo was the chosen cover, fall back to the new first photo.
+  if (place.coverPhotoUrl === deletedUrl) updates.coverPhotoUrl = null;
   try {
-    await setDoc(doc(db, PLACES_COLLECTION, placeId), { photos: updated }, { merge: true });
+    await setDoc(doc(db, PLACES_COLLECTION, placeId), updates, { merge: true });
     place.photos = updated;
+    if ('coverPhotoUrl' in updates) place.coverPhotoUrl = null;
     document.getElementById('photoGallery').innerHTML = renderPhotoGalleryItems(place);
     wireGalleryHandlers(place);
+    renderList();
   } catch (err) {
     console.error(err);
     alert('Could not delete photo — check your internet connection and try again.');
