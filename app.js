@@ -1,6 +1,6 @@
 import { db } from './firebase.js';
 import {
-  collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch,
+  collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch, arrayUnion, arrayRemove,
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 import { IMGBB_API_KEY } from './imgbb-config.js';
 
@@ -92,7 +92,7 @@ function skinBackgroundCss(skin) {
   const overlay = skin.overlay ?? 0.4;
   const wash = `linear-gradient(rgba(255,255,255,${overlay}), rgba(255,255,255,${overlay}))`;
   if (skin.image) {
-    return `${wash}, url('${skin.image}?v=20260624c') center/cover no-repeat`;
+    return `${wash}, url('${skin.image}?v=20260624d') center/cover no-repeat`;
   }
   return `${wash}, ${skin.css}`;
 }
@@ -1340,7 +1340,7 @@ function renderGameCanvas(name) {
   let courtImageEl = null;
   if (courtItem?.image) {
     courtImageEl = new Image();
-    courtImageEl.src = `${courtItem.image}?v=20260624c`;
+    courtImageEl.src = `${courtItem.image}?v=20260624d`;
   }
 
   const modal = document.getElementById('gameModal');
@@ -2639,15 +2639,18 @@ async function setCoverPhoto(placeId, idx) {
 async function deletePhoto(placeId, idx) {
   if (!confirm('Delete this photo?')) return;
   const place = places.find(p => p.id === placeId);
-  if (!place) return;
-  const deletedUrl = photoUrl(place.photos[idx]);
-  const updated = (place.photos || []).filter((_, i) => i !== idx);
-  const updates = { photos: updated };
-  // If the deleted photo was the chosen cover, fall back to the new first photo.
+  if (!place || !place.photos || !place.photos[idx]) return;
+  const photoToDelete = place.photos[idx];
+  const deletedUrl = photoUrl(photoToDelete);
+  // arrayRemove only takes out the exact entry that's actually on the server
+  // right now, instead of overwriting the whole array with this client's
+  // possibly-stale copy — otherwise two people deleting/adding photos on the
+  // same place around the same time could silently wipe out each other's edits.
+  const updates = { photos: arrayRemove(photoToDelete) };
   if (place.coverPhotoUrl === deletedUrl) updates.coverPhotoUrl = null;
   try {
     await setDoc(doc(db, PLACES_COLLECTION, placeId), updates, { merge: true });
-    place.photos = updated;
+    place.photos = place.photos.filter((_, i) => i !== idx);
     if ('coverPhotoUrl' in updates) place.coverPhotoUrl = null;
     refreshPhotoGallery(place);
     renderList();
@@ -2709,14 +2712,21 @@ async function handlePhotoUpload(e, placeId) {
       btn.textContent = '⏳ Uploading…';
       const compressed = await compressImage(file);
       const url = await uploadToImgbb(compressed);
-      place.lastPhotoAddedAt = Date.now();
-      place.lastPhotoAddedBy = getSavedAuthorName() || 'Someone';
-      place.photos = [...(place.photos || []), { url, author: place.lastPhotoAddedBy, uploadedAt: place.lastPhotoAddedAt }];
+      const lastPhotoAddedAt = Date.now();
+      const lastPhotoAddedBy = getSavedAuthorName() || 'Someone';
+      const newPhoto = { url, author: lastPhotoAddedBy, uploadedAt: lastPhotoAddedAt };
+      // arrayUnion appends to whatever the server's array actually is right
+      // now, instead of writing this client's possibly-stale full copy —
+      // otherwise two people adding photos to the same place at once could
+      // silently overwrite (lose) each other's upload.
       await setDoc(doc(db, PLACES_COLLECTION, placeId), {
-        photos: place.photos,
-        lastPhotoAddedAt: place.lastPhotoAddedAt,
-        lastPhotoAddedBy: place.lastPhotoAddedBy,
+        photos: arrayUnion(newPhoto),
+        lastPhotoAddedAt,
+        lastPhotoAddedBy,
       }, { merge: true });
+      place.lastPhotoAddedAt = lastPhotoAddedAt;
+      place.lastPhotoAddedBy = lastPhotoAddedBy;
+      place.photos = [...(place.photos || []), newPhoto];
       refreshPhotoGallery(place);
       uploadedCount += 1;
       flashLastPhoto();
